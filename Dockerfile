@@ -1,8 +1,7 @@
 # Use a Node.js 20+ base with Chromium pre-installed to satisfy Vite 8 requirements
 FROM ghcr.io/puppeteer/puppeteer:23.11.1
 
-# Set production environment and default port
-ENV NODE_ENV=production
+# Set default port
 ENV PORT=10000
 
 # Switch to root to manage file permissions for build
@@ -22,6 +21,9 @@ RUN npm run build
 
 # Expose the internal port for Render to connect
 EXPOSE 10000
+
+# Set production environment for runtime
+ENV NODE_ENV=production
 
 # Start the application using 'npm start' (node whatsapp_server.js)
 CMD ["npm", "run", "start"]
