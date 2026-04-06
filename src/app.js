@@ -10,6 +10,7 @@ import { renderStep3, initStep3 } from "./step3.js";
 import { renderStep4, initStep4 } from "./step4.js";
 import { initOnboarding, showOnboarding } from "./onboarding.js";
 import { showConfirm } from "./modal.js";
+import { initGuidance } from "./guidance.js";
 
 const STEPS = [
   {
@@ -57,6 +58,9 @@ export class App {
 
     // Initialize Onboarding (walkthrough) if not disabled
     initOnboarding();
+
+    // Initialize dynamic guidance indicators
+    initGuidance();
 
     // Prevent Space bar from triggering any button globally (standard fix for "Space bar clicks button")
     window.addEventListener(
@@ -131,8 +135,9 @@ export class App {
           </div>
           <div class="header-actions">
             <div id="whatsapp-hub-container"></div>
-            <div class="btn btn-secondary btn-sm" id="help-btn" role="button" tabindex="-1" title="How to use this app">
-              <i class="fa-solid fa-circle-question"></i> <span>Guide</span>
+            <div class="btn btn-secondary btn-sm" id="help-btn" role="button" tabindex="-1" title="${state.guidanceEnabled ? "Show app walkthrough" : "Re-enable guidance hints"}">
+              <i class="fa-solid fa-${state.guidanceEnabled ? "circle-question" : "wand-magic-sparkles"}"></i> 
+              <span>${state.guidanceEnabled ? "Guide" : "Enable Tips"}</span>
             </div>
             <div class="session-badge" id="session-badge" title="Session auto-saved to browser storage">
               <i class="fa-solid fa-cloud-arrow-up"></i> <span>Saved</span>
@@ -250,6 +255,9 @@ export class App {
 
     // Help Button
     document.getElementById("help-btn")?.addEventListener("click", () => {
+      state.guidanceEnabled = true;
+      localStorage.setItem("invitecraft_guidance_enabled", "true");
+      notify();
       showOnboarding();
     });
 

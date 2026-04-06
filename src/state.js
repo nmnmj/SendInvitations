@@ -31,6 +31,8 @@ export const state = {
   },
   whatsappPairingCode: null,
   whatsappPhone: "",
+  guidanceEnabled:
+    localStorage.getItem("invitecraft_guidance_enabled") !== "false",
 };
 
 // Ensure session ID is preserved
