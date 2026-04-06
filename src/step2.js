@@ -826,6 +826,19 @@ function drawPreview() {
         metrics.width + 8,
         scaledSize + 4,
       );
+
+      // Draw Resize Handle (Native Mobile Feel)
+      const handleX = rectX - 4 + metrics.width + 8;
+      const handleY = py - scaledSize / 2 - 2;
+      ctx.setLineDash([]);
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "var(--accent-primary)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(handleX, handleY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
       ctx.restore();
     });
 
@@ -901,8 +914,11 @@ function onCanvasMouseDown(e) {
     const trX = rectX - 4 + metrics.width + 8;
     const trY = py - scaledSize / 2 - 2;
 
-    if (Math.hypot(mx - trX, my - trY) <= 12) {
-      if (e.cancelable) e.preventDefault(); // Prevent scroll
+    const isTouch = e.type.startsWith("touch");
+    const hitRadius = isTouch ? 30 : 15; // More forgiving on touch
+
+    if (Math.hypot(mx - trX, my - trY) <= hitRadius) {
+      if (e.cancelable) e.preventDefault();
       resizeTarget = p;
       initialResizeFontSize = p.fontSize;
       initialResizeMouseY = my;
@@ -910,8 +926,9 @@ function onCanvasMouseDown(e) {
       return;
     }
 
-    const hitH = scaledSize + 16;
-    const hitW = scaledSize * text.length * 0.7 + 40;
+    const hitH = scaledSize + (isTouch ? 40 : 20);
+    const hitW =
+      (metrics.width || scaledSize * text.length * 0.7) + (isTouch ? 60 : 30);
 
     let hitX = px;
     if (p.alignment === "center") hitX = px - hitW / 2;
@@ -923,7 +940,7 @@ function onCanvasMouseDown(e) {
       my >= py - hitH / 2 &&
       my <= py + hitH / 2
     ) {
-      if (e.cancelable) e.preventDefault(); // Prevent scroll
+      if (e.cancelable) e.preventDefault();
       dragTarget = p;
       dragOffset.x = mx - px;
       dragOffset.y = my - py;
@@ -935,6 +952,9 @@ function onCanvasMouseDown(e) {
 
 function onCanvasMouseMove(e) {
   if (!canvas) return;
+
+  const isTouch = e.type.startsWith("touch");
+  if (isTouch && e.touches.length > 1) return; // Ignore multi-touch for now to keep it stable
 
   if (dragTarget || resizeTarget) {
     if (e.cancelable) e.preventDefault(); // Stop mobile scroll while dragging
