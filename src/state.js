@@ -29,6 +29,8 @@ export const state = {
     blankCount: 0,
     hindiMode: false,
   },
+  whatsappPairingCode: null,
+  whatsappPhone: "",
 };
 
 // Ensure session ID is preserved

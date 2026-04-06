@@ -84,7 +84,8 @@ async function getOrCreateClient(sessionId) {
         width: 300,
         color: { dark: "#25D366", light: "#ffffff" },
       });
-      sessionData.set(sessionId, { status: "qr", qr: qrDataURL });
+      const current = sessionData.get(sessionId) || {};
+      sessionData.set(sessionId, { ...current, status: "qr", qr: qrDataURL });
     }
 
     if (connection) {
@@ -100,7 +101,12 @@ async function getOrCreateClient(sessionId) {
       );
 
       if (!shouldReconnect) {
-        sessionData.set(sessionId, { status: "disconnected", qr: null });
+        const current = sessionData.get(sessionId) || {};
+        sessionData.set(sessionId, {
+          ...current,
+          status: "disconnected",
+          qr: null,
+        });
         sessions.delete(sessionId);
         // Cleanup auth folder
         try {
@@ -115,7 +121,8 @@ async function getOrCreateClient(sessionId) {
       }
     } else if (connection === "open") {
       console.log(`✅ Session [${sessionId}] is online!`);
-      sessionData.set(sessionId, { status: "ready", qr: null });
+      const current = sessionData.get(sessionId) || {};
+      sessionData.set(sessionId, { ...current, status: "ready", qr: null });
     }
   });
 
@@ -157,7 +164,38 @@ app.post("/api/whatsapp/logout", async (req, res) => {
   res.json({ success: true });
 });
 
-// 3. Poll for Status/QR
+// 3. Request Pairing Code (for mobile linking)
+app.post("/api/whatsapp/pairing-code", async (req, res) => {
+  const { sessionId, phone } = req.body;
+  if (!sessionId || !phone)
+    return res.status(400).json({ error: "Missing sessionId or phone" });
+
+  try {
+    const sock = await getOrCreateClient(sessionId);
+    // Wait a bit for the engine to stabilize if it was just created
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Format phone: remove everything except digits
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (!cleanPhone) throw new Error("Invalid phone number");
+
+    console.log(
+      `🔑 Requesting Pairing Code for [${sessionId}] -> ${cleanPhone}`,
+    );
+    const code = await sock.requestPairingCode(cleanPhone);
+
+    // Save pairing code in sessionData so status polling can see it
+    const current = sessionData.get(sessionId) || {};
+    sessionData.set(sessionId, { ...current, pairingCode: code });
+
+    res.json({ success: true, code });
+  } catch (err) {
+    console.error("Pairing Code Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Poll for Status/QR/PairingCode
 app.get("/api/whatsapp/status", async (req, res) => {
   const { sessionId } = req.query;
   if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });

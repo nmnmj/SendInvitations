@@ -533,57 +533,95 @@ export function renderTable() {
 
   // Add cell edit listeners
   document.querySelectorAll(".csv-cell").forEach((cell) => {
-    cell.addEventListener("keydown", async (e) => {
-      const isHindiOn = state.csvData.hindiMode;
-      if (!isHindiOn) return;
+    // Shared transliteration logic
+    const handleTransliteration = async (e, isManualKey) => {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      const node = range.startContainer;
 
-      if (e.key === " " || e.key === "Enter") {
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-        const range = selection.getRangeAt(0);
-        const node = range.startContainer;
+      // Find the word before the cursor
+      const text = node.textContent || "";
+      const pos = range.startOffset;
 
-        // Find the word before the cursor (only if it's a text node or the cell itself)
-        const text = node.textContent || "";
-        const pos = range.startOffset;
-        const lastWordMatch = text.substring(0, pos).match(/(\S+)$/);
+      // If triggered by 'input' event, the space is already at pos-1
+      const isInputSpace = e.type === "input" && e.data === " ";
+      const lookbackPos = isInputSpace ? pos - 1 : pos;
 
-        if (lastWordMatch) {
-          e.preventDefault();
-          const word = lastWordMatch[1];
-          const start = lastWordMatch.index;
+      const textBefore = text.substring(0, lookbackPos);
+      const lastWordMatch = textBefore.match(/(\S+)$/);
 
-          try {
-            const hindiWord = await transliterateWord(word);
-            const extra = e.key === "Enter" ? "\n" : " ";
-            const newText =
+      if (lastWordMatch) {
+        // If keydown, we prevent default to control space insertion
+        if (e.type === "keydown") e.preventDefault();
+
+        const word = lastWordMatch[1];
+        const start = lastWordMatch.index;
+
+        try {
+          const hindiWord = await transliterateWord(word);
+          const extra = isManualKey === "Enter" ? "\n" : " ";
+
+          let newText;
+          if (isInputSpace) {
+            // Space is already there at pos-1
+            newText =
+              text.substring(0, start) + hindiWord + " " + text.substring(pos);
+          } else {
+            // Space/Enter not there yet
+            newText =
               text.substring(0, start) +
               hindiWord +
               extra +
               text.substring(pos);
-            node.textContent = newText;
-
-            // Restore cursor position
-            const newRange = document.createRange();
-            newRange.setStart(node, start + hindiWord.length + 1);
-            newRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-
-            // Update state
-            const idx = cell.dataset.index;
-            const header = cell.dataset.header;
-            state.csvData.rows[idx][header] = node.textContent;
-
-            // Update stats
-            state.csvData.blankCount = calculateBlankCount();
-            const blanksEl = document.getElementById("stat-blanks");
-            if (blanksEl) blanksEl.textContent = state.csvData.blankCount;
-            notify();
-          } catch (err) {
-            console.error("Transliteration failed", err);
           }
+
+          node.textContent = newText;
+
+          // Restore cursor position
+          const newRange = document.createRange();
+          const newPos = start + hindiWord.length + 1;
+          newRange.setStart(node, Math.min(newPos, node.textContent.length));
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+
+          // Update state
+          const idx = cell.dataset.index;
+          const header = cell.dataset.header;
+          state.csvData.rows[idx][header] = node.textContent;
+
+          // Update stats
+          state.csvData.blankCount = calculateBlankCount();
+          const blanksEl = document.getElementById("stat-blanks");
+          if (blanksEl) blanksEl.textContent = state.csvData.blankCount;
+          notify();
+        } catch (err) {
+          console.error("Transliteration failed", err);
         }
+      }
+    };
+
+    cell.addEventListener("keydown", async (e) => {
+      if (!state.csvData.hindiMode) return;
+      // Use both key and keyCode for wider mobile compatibility
+      const isSpace = e.key === " " || e.keyCode === 32;
+      const isEnter = e.key === "Enter" || e.keyCode === 13;
+
+      if (isSpace || isEnter) {
+        // On many mobile browsers, e.key is "Unidentified" or keyCode is 229 during composition
+        // we'll let the 'input' event handle those cases.
+        if (e.key !== "Unidentified" && e.keyCode !== 229) {
+          await handleTransliteration(e, isEnter ? "Enter" : "Space");
+        }
+      }
+    });
+
+    cell.addEventListener("input", async (e) => {
+      if (!state.csvData.hindiMode) return;
+      // Fallback for mobile keyboards that don't fire precise keydown events
+      if (e.data === " ") {
+        await handleTransliteration(e, "Space");
       }
     });
 
@@ -593,8 +631,8 @@ export function renderTable() {
       const val = e.target.innerText.trim();
       state.csvData.rows[idx][header] = val;
       state.csvData.blankCount = calculateBlankCount();
-      document.getElementById("stat-blanks").textContent =
-        state.csvData.blankCount;
+      const stBlanks = document.getElementById("stat-blanks");
+      if (stBlanks) stBlanks.textContent = state.csvData.blankCount;
       notify();
       // Style update if blank
       if (val === "") {
