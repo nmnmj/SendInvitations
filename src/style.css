@@ -1299,34 +1299,171 @@ input[type="color"] {
 /* ============================================
    Responsive
    ============================================ */
+/* ============================================
+   Responsive Improvements
+   ============================================ */
+
+/* Large Tablets & Small Laptops */
 @media (max-width: 1024px) {
   .preview-container {
     grid-template-columns: 1fr;
   }
 }
 
+/* Tablets & Mobile */
 @media (max-width: 768px) {
-  .stepper {
-    flex-wrap: wrap;
+  .app-header {
     padding: var(--space-md);
   }
+
+  .header-inner {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-md);
+  }
+
+  .logo-text {
+    font-size: 1.25rem;
+  }
+
+  .logo-badge {
+    display: none; /* Hide 'Pro' badge to save space */
+  }
+
+  .stepper {
+    padding: var(--space-md);
+    justify-content: center;
+    overflow-x: auto;
+    scrollbar-width: none; /* Hide scrollbar for standard Firefox */
+  }
+  .stepper::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome/Safari */
+  }
+
   .step-connector {
-    display: none;
+    min-width: 15px; /* Narrower connectors */
   }
+
   .step-label {
-    display: none;
+    display: none; /* Only show numbers on mobile */
   }
+
+  .main-content {
+    padding: 0 var(--space-md) var(--space-3xl);
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.85rem;
+    margin-bottom: var(--space-lg);
+  }
+
+  .card {
+    padding: var(--space-lg);
+  }
+
+  .image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--space-sm);
+  }
+
   .settings-grid {
     grid-template-columns: 1fr;
   }
+
+  .settings-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .settings-row > * {
+    width: 100%;
+  }
+
+  .nav-buttons {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+  }
+}
+
+/* Small Mobile Devices */
+@media (max-width: 480px) {
+  .logo-text {
+    font-size: 1.1rem;
+  }
+  
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  /* Responsive compact header actions */
+  .whatsapp-badge span,
+  .session-badge span,
+  #clear-session-btn span {
+    display: none;
+  }
+
+  .flex.items-center.gap-md {
+    gap: var(--space-sm); /* Reduce gap between header icons */
+  }
+
+  .whatsapp-badge, 
+  .session-badge,
+  #clear-session-btn {
+    padding: 8px 10px;
+    min-width: 38px;
+    justify-content: center;
+  }
+
   .image-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(2, 1fr); /* Force 2 columns for images */
   }
-  .main-content {
-    padding: 0 var(--space-md) var(--space-2xl);
+
+  .image-card-badge {
+    width: 20px;
+    height: 20px;
+    font-size: 0.65rem;
+    top: 6px;
+    left: 6px;
   }
-  .section-title {
-    font-size: 1.4rem;
+
+  .image-card-actions button {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+  }
+  
+  .nav-buttons {
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+  
+  .nav-buttons button {
+    width: 100%;
+    order: 1;
+  }
+  
+  #prev-btn {
+    order: 2; /* Move 'Back' button below 'Next' on mobile */
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+  }
+
+  .wa-modal {
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .wa-qr-container {
+    width: 220px;
+    height: 220px;
   }
 }
 

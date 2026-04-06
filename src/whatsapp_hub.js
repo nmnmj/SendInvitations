@@ -30,19 +30,19 @@ export function renderHub() {
   if (s === "ready") {
     badgeHTML = `
       <div class="whatsapp-badge online" id="wa-hub-open">
-        <i class="fa-brands fa-whatsapp"></i> WhatsApp Online
+        <i class="fa-brands fa-whatsapp"></i> <span>WhatsApp Online</span>
       </div>
     `;
   } else if (s === "qr" || s === "initializing" || s === "authenticated") {
     badgeHTML = `
       <div class="whatsapp-badge loading" id="wa-hub-open">
-        <i class="fa-solid fa-spinner"></i> Connecting...
+        <i class="fa-solid fa-spinner"></i> <span>Connecting...</span>
       </div>
     `;
   } else {
     badgeHTML = `
       <div class="whatsapp-badge offline" id="wa-hub-open">
-        <i class="fa-brands fa-whatsapp"></i> Connect WhatsApp
+        <i class="fa-brands fa-whatsapp"></i> <span>Connect WhatsApp</span>
       </div>
     `;
   }

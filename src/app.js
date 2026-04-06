@@ -77,10 +77,10 @@ export class App {
           <div class="flex items-center gap-md">
             <div id="whatsapp-hub-container"></div>
             <div class="session-badge" id="session-badge" title="Session auto-saved to browser storage">
-              <i class="fa-solid fa-cloud-arrow-up"></i> Auto-saved
+              <i class="fa-solid fa-cloud-arrow-up"></i> <span>Auto-saved</span>
             </div>
             <button class="btn btn-danger btn-sm" id="clear-session-btn" title="Clear all data and start fresh">
-              <i class="fa-solid fa-rotate-left"></i> Reset
+              <i class="fa-solid fa-rotate-left"></i> <span>Reset</span>
             </button>
           </div>
         </div>
