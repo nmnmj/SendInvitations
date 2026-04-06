@@ -449,6 +449,17 @@ h6 {
   background: rgba(108, 99, 255, 0.08);
 }
 
+.btn-outline {
+  background: transparent;
+  color: var(--accent-primary-light);
+  border: 1px solid var(--accent-primary-light);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: rgba(108, 99, 255, 0.1);
+  border-color: var(--accent-primary);
+}
+
 .btn-danger {
   background: rgba(239, 68, 68, 0.15);
   color: var(--danger);
@@ -963,6 +974,17 @@ input[type="color"] {
 
 .csv-table tbody tr:hover {
   background: rgba(108, 99, 255, 0.04);
+}
+
+.csv-cell {
+  outline: none;
+  min-width: 100px;
+  cursor: text;
+}
+
+.csv-cell:focus {
+  background: rgba(108, 99, 255, 0.1);
+  box-shadow: inset 0 0 0 1px var(--accent-primary-light);
 }
 
 .csv-table tbody tr.error-row {

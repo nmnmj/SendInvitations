@@ -17,11 +17,14 @@ export function renderStep3() {
       </p>
     </div>
 
-    <!-- Upload area -->
     <div class="dropzone" id="csv-dropzone">
       <span class="dropzone-icon"><i class="fa-solid fa-file-csv"></i></span>
       <p class="dropzone-title">Drop CSV file here</p>
       <p class="dropzone-subtitle">or <span class="dropzone-browse" id="csv-browse-trigger">browse</span> — .csv files only</p>
+      <div style="margin-top: 8px;">
+        <span class="text-muted" style="font-size:0.8rem;">No CSV? </span>
+        <span id="manual-add-trigger" style="font-size:0.8rem; color:var(--accent-primary-light); cursor:pointer; text-decoration:underline;">Add guest list manually</span>
+      </div>
       <input type="file" id="csv-file-input" accept=".csv" style="display:none;" />
     </div>
 
@@ -29,9 +32,13 @@ export function renderStep3() {
     <div class="card mt-lg" id="csv-columns-card" style="display:none;">
       <div class="card-header">
         <div class="card-header-icon blue"><i class="fa-solid fa-table-columns"></i></div>
-        <span class="card-title">Detected Columns</span>
+        <span class="card-title">Detected Columns / Variables</span>
+        <div style="flex:1;"></div>
+        <button class="btn btn-sm" id="edit-headers-btn" style="padding: 4px 8px; font-size: 0.7rem; background: var(--bg-input); color: var(--text-muted);">
+          <i class="fa-solid fa-gear"></i> Edit Columns
+        </button>
       </div>
-      <p class="text-muted mb-md" style="font-size:0.85rem;">These columns will be available as <strong>{{placeholder}}</strong> variables in Step 2:</p>
+      <p class="text-muted mb-md" style="font-size:0.85rem;">These will be available as <strong>{{placeholder}}</strong> variables in the personalization step.</p>
       <div class="page-pills" id="csv-columns-pills"></div>
     </div>
 
@@ -58,6 +65,13 @@ export function renderStep3() {
     <!-- Actions -->
     <div class="flex gap-sm flex-wrap mt-lg" id="csv-actions" style="display:none;">
       <button class="btn btn-success" id="download-csv-btn"><i class="fa-solid fa-download"></i> Download CSV</button>
+      <div class="flex items-center gap-sm px-md py-xs" style="background:var(--bg-input); border-radius:var(--radius-md); border:1px solid var(--border-color);">
+        <label class="flex items-center gap-xs cursor-pointer" style="font-size:0.85rem; user-select:none;">
+          <input type="checkbox" id="hindi-mode-toggle" style="width:16px; height:16px; accent-color:var(--accent-primary);">
+          <span>Hindi Input Mode</span>
+        </label>
+        <span class="hint-btn" title="When ON, your typing (English) into cells will automatically convert to Hindi Devnagri script when you hit Space."><i class="fa-solid fa-circle-question" style="opacity:0.5; font-size:0.9rem;"></i></span>
+      </div>
       <button class="btn btn-accent" id="send-all-wa-btn" style="background:#25D366; color:white;"><i class="fa-brands fa-whatsapp"></i> Send All to WhatsApp</button>
       <div id="wa-batch-status-inline" class="flex items-center gap-sm mt-sm" style="font-size:0.75rem; color:var(--text-muted);"></div>
       <button class="btn btn-danger" id="clear-csv-btn"><i class="fa-solid fa-trash"></i> Clear Data</button>
@@ -106,6 +120,36 @@ export function initStep3() {
     fileInput.value = "";
   });
 
+  const manualTrigger = document.getElementById("manual-add-trigger");
+
+  manualTrigger.addEventListener("click", () => {
+    if (state.csvData.headers.length === 0) {
+      state.csvData.headers = ["Name", "Phone", "Table"];
+    }
+    // Add one empty row if they are starting from scratch
+    if (state.csvData.rows.length === 0) {
+      addRow();
+    }
+    showResults();
+    notify();
+  });
+
+  document.getElementById("edit-headers-btn")?.addEventListener("click", () => {
+    const current = state.csvData.headers.join(", ");
+    const val = prompt("Enter column headers separated by commas:", current);
+    if (val !== null) {
+      const newHeaders = val
+        .split(",")
+        .map((h) => h.trim())
+        .filter((h) => h.length > 0);
+      if (newHeaders.length > 0) {
+        state.csvData.headers = newHeaders;
+        showResults();
+        notify();
+      }
+    }
+  });
+
   document
     .getElementById("download-csv-btn")
     ?.addEventListener("click", downloadCSV);
@@ -148,13 +192,7 @@ function handleCSV(file) {
       }));
 
       // Count blank fields
-      let blankCount = 0;
-      data.forEach((row) => {
-        headers.forEach((h) => {
-          if (!row[h] || row[h].trim() === "") blankCount++;
-        });
-      });
-      state.csvData.blankCount = blankCount;
+      state.csvData.blankCount = calculateBlankCount();
 
       showResults();
       showToast(
@@ -170,6 +208,7 @@ function handleCSV(file) {
 }
 
 function showResults() {
+  state.csvData.blankCount = calculateBlankCount();
   const { headers, rows, blankCount } = state.csvData;
 
   // Show columns card
@@ -186,6 +225,21 @@ function showResults() {
   document.getElementById("csv-stats").style.display = "";
   document.getElementById("csv-actions").style.display = "";
   document.getElementById("csv-table-wrap").style.display = "";
+
+  // Add Row button if it doesn't exist
+  if (!document.getElementById("add-row-manual-btn")) {
+    const act = document.getElementById("csv-actions");
+    const addBtn = document.createElement("button");
+    addBtn.className = "btn btn-outline";
+    addBtn.id = "add-row-manual-btn";
+    addBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Add One Guest`;
+    addBtn.onclick = () => {
+      addRow();
+      renderTable();
+      notify();
+    };
+    act.prepend(addBtn);
+  }
 
   document.getElementById("stat-total").textContent = rows.length;
   document.getElementById("stat-valid").textContent = rows.length;
@@ -220,18 +274,23 @@ function showResults() {
   renderTable();
 }
 
-function renderTable() {
+export function renderTable() {
   const { headers, rows } = state.csvData;
   const thead = document.getElementById("csv-table-head");
   const tbody = document.getElementById("csv-table-body");
   if (!thead || !tbody) return;
 
-  thead.innerHTML = `<th>#</th><th title="Manual Sent Status">Sent</th>${headers.map((h) => `<th>{{${h}}}</th>`).join("")}<th style="text-align:right;">Quick Share</th>`;
+  // Update stats that might have changed
+  const totalEl = document.getElementById("stat-total");
+  if (totalEl) totalEl.textContent = rows.length;
+  const validEl = document.getElementById("stat-valid");
+  if (validEl) validEl.textContent = rows.length;
+
+  thead.innerHTML = `<th>#</th><th title="Manual Sent Status">Sent</th>${headers.map((h) => `<th>{{${h}}}</th>`).join("")}<th style="text-align:right;">Quick Share / Delete</th>`;
 
   tbody.innerHTML = rows
     .map((row, i) => {
       const isSent = row.__sent__ === true;
-      // Find a possible phone number automatically (10 digits or more)
       let phoneTxt = "";
       for (const h of headers) {
         const val = (row[h] || "").toString().trim();
@@ -251,18 +310,110 @@ function renderTable() {
       ${headers
         .map((h) => {
           const val = row[h] || "";
-          const isBlank = val.trim() === "";
-          return `<td${isBlank ? ' style="color:var(--text-muted);font-style:italic;"' : ""}>${isBlank ? "(blank)" : val}</td>`;
+          const isBlank = val.toString().trim() === "";
+          return `<td contenteditable="true" class="csv-cell" data-header="${h}" data-index="${i}" ${isBlank ? 'style="color:var(--text-muted);font-style:italic;"' : ""}>${isBlank ? "" : val}</td>`;
         })
         .join("")}
       <td style="text-align:right;">
-         <button class="btn btn-sm wa-quick-send-btn hint-btn" data-index="${i}" data-phone="${phoneTxt}" style="${hasPhone ? "background:#25D366; color:white;" : "background:var(--bg-highlight); color:var(--text-muted);"}" ${!hasPhone ? 'title="No phone number detected"' : ""}>
-           <i class="fa-brands fa-whatsapp"></i> ${hasPhone ? "Send" : "Generate"}
-         </button>
+         <div class="flex items-center justify-end gap-sm">
+           <button class="btn btn-sm wa-quick-send-btn hint-btn" data-index="${i}" data-phone="${phoneTxt}" style="${hasPhone ? "background:#25D366; color:white;" : "background:var(--bg-highlight); color:var(--text-muted);"}" ${!hasPhone ? 'title="No phone number detected"' : ""}>
+             <i class="fa-brands fa-whatsapp"></i> ${hasPhone ? "Send" : "Generate"}
+           </button>
+           <button class="btn btn-sm csv-delete-row-btn" data-index="${i}" style="background:transparent; border:none; color:var(--danger); padding:4px;" title="Delete Row">
+             <i class="fa-solid fa-trash"></i>
+           </button>
+         </div>
       </td>
     </tr>`;
     })
     .join("");
+
+  // Add cell edit listeners
+  document.querySelectorAll(".csv-cell").forEach((cell) => {
+    cell.addEventListener("keydown", async (e) => {
+      const isHindiOn = document.getElementById("hindi-mode-toggle")?.checked;
+      if (!isHindiOn) return;
+
+      if (e.key === " " || e.key === "Enter") {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        const node = range.startContainer;
+
+        // Find the word before the cursor (only if it's a text node or the cell itself)
+        const text = node.textContent || "";
+        const pos = range.startOffset;
+        const lastWordMatch = text.substring(0, pos).match(/(\S+)$/);
+
+        if (lastWordMatch) {
+          e.preventDefault();
+          const word = lastWordMatch[1];
+          const start = lastWordMatch.index;
+
+          try {
+            const hindiWord = await transliterateWord(word);
+            const extra = e.key === "Enter" ? "\n" : " ";
+            const newText =
+              text.substring(0, start) +
+              hindiWord +
+              extra +
+              text.substring(pos);
+            node.textContent = newText;
+
+            // Restore cursor position
+            const newRange = document.createRange();
+            newRange.setStart(node, start + hindiWord.length + 1);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+
+            // Update state
+            const idx = cell.dataset.index;
+            const header = cell.dataset.header;
+            state.csvData.rows[idx][header] = node.textContent;
+
+            // Update stats
+            state.csvData.blankCount = calculateBlankCount();
+            const blanksEl = document.getElementById("stat-blanks");
+            if (blanksEl) blanksEl.textContent = state.csvData.blankCount;
+            notify();
+          } catch (err) {
+            console.error("Transliteration failed", err);
+          }
+        }
+      }
+    });
+
+    cell.addEventListener("blur", (e) => {
+      const idx = e.target.dataset.index;
+      const header = e.target.dataset.header;
+      const val = e.target.innerText.trim();
+      state.csvData.rows[idx][header] = val;
+      state.csvData.blankCount = calculateBlankCount();
+      document.getElementById("stat-blanks").textContent =
+        state.csvData.blankCount;
+      notify();
+      // Style update if blank
+      if (val === "") {
+        e.target.style.color = "var(--text-muted)";
+        e.target.style.fontStyle = "italic";
+        e.target.innerText = "";
+      } else {
+        e.target.style.color = "";
+        e.target.style.fontStyle = "";
+      }
+    });
+  });
+
+  // Delete row listener
+  document.querySelectorAll(".csv-delete-row-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.index);
+      state.csvData.rows.splice(idx, 1);
+      renderTable();
+      notify();
+    });
+  });
 
   // Add listeners for Sent checkboxes
   document.querySelectorAll(".row-sent-checkbox").forEach((cb) => {
@@ -505,12 +656,49 @@ async function sendAllToWhatsApp() {
 }
 
 function clearCSV() {
+  if (!confirm("Are you sure you want to clear all guest data?")) return;
   state.csvData = { rows: [], headers: [], blankCount: 0 };
   document.getElementById("csv-stats").style.display = "none";
   document.getElementById("csv-actions").style.display = "none";
   document.getElementById("csv-table-wrap").style.display = "none";
   document.getElementById("csv-columns-card").style.display = "none";
   document.getElementById("csv-info-report").innerHTML = "";
+
+  // Remove the "Add One Guest" button from actions if it exists
+  document.getElementById("add-row-manual-btn")?.remove();
+
   showToast("CSV data cleared", "info");
   notify();
+}
+
+function addRow() {
+  const { headers } = state.csvData;
+  const newRow = { __sent__: false };
+  headers.forEach((h) => (newRow[h] = ""));
+  state.csvData.rows.push(newRow);
+  state.csvData.blankCount = calculateBlankCount();
+}
+
+function calculateBlankCount() {
+  const { headers, rows } = state.csvData;
+  let count = 0;
+  rows.forEach((row) => {
+    headers.forEach((h) => {
+      const val = row[h];
+      if (val === undefined || val === null || val.toString().trim() === "")
+        count++;
+    });
+  });
+  return count;
+}
+
+async function transliterateWord(word) {
+  if (!word) return "";
+  const url = `https://inputtools.google.com/request?itc=hi-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=test&text=${encodeURIComponent(word)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data[0] === "SUCCESS") {
+    return data[1][0][1][0]; // Extract the first suggestion
+  }
+  return word;
 }
