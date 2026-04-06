@@ -453,6 +453,12 @@ function initPreview() {
   canvas.addEventListener("mousemove", onCanvasMouseMove);
   canvas.addEventListener("mouseup", onCanvasMouseUp);
   canvas.addEventListener("mouseleave", onCanvasMouseUp);
+
+  // Touch event bindings for mobile
+  canvas.addEventListener("touchstart", onCanvasMouseDown, { passive: false });
+  canvas.addEventListener("touchmove", onCanvasMouseMove, { passive: false });
+  canvas.addEventListener("touchend", onCanvasMouseUp);
+  canvas.addEventListener("touchcancel", onCanvasMouseUp);
 }
 
 function renderPagePills() {
@@ -687,8 +693,12 @@ function updateOverlayList(overlays) {
 function onCanvasMouseDown(e) {
   if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const clientX =
+    e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+  const clientY =
+    e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
   const w = canvas.width;
   const h = canvas.height;
 
@@ -725,6 +735,7 @@ function onCanvasMouseDown(e) {
     const trY = py - scaledSize / 2 - 2;
 
     if (Math.hypot(mx - trX, my - trY) <= 12) {
+      if (e.cancelable) e.preventDefault(); // Prevent scroll
       resizeTarget = p;
       initialResizeFontSize = p.fontSize;
       initialResizeMouseY = my;
@@ -745,6 +756,7 @@ function onCanvasMouseDown(e) {
       my >= py - hitH / 2 &&
       my <= py + hitH / 2
     ) {
+      if (e.cancelable) e.preventDefault(); // Prevent scroll
       dragTarget = p;
       dragOffset.x = mx - px;
       dragOffset.y = my - py;
@@ -756,9 +768,18 @@ function onCanvasMouseDown(e) {
 
 function onCanvasMouseMove(e) {
   if (!canvas) return;
+
+  if (dragTarget || resizeTarget) {
+    if (e.cancelable) e.preventDefault(); // Stop mobile scroll while dragging
+  }
+
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const clientX =
+    e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+  const clientY =
+    e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
   const w = canvas.width;
   const h = canvas.height;
 

@@ -1451,17 +1451,20 @@ input[type="color"] {
   }
 
   .stepper {
-    padding: var(--space-md);
-    justify-content: center;
-    overflow-x: auto;
-    scrollbar-width: none; /* Hide scrollbar for standard Firefox */
+    padding: var(--space-xs);
+    justify-content: space-between;
+    width: 100%;
+    margin: 0;
   }
-  .stepper::-webkit-scrollbar {
-    display: none; /* Hide scrollbar for Chrome/Safari */
+
+  .step-item {
+    min-width: auto;
+    padding: 0;
+    flex: 1;
   }
 
   .step-connector {
-    min-width: 15px; /* Narrower connectors */
+    min-width: 10px; /* Narrower connectors */
   }
 
   .step-label {
@@ -1470,6 +1473,15 @@ input[type="color"] {
 
   .main-content {
     padding: 0 var(--space-md) var(--space-3xl);
+  }
+
+  .row {
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .col {
+    width: 100% !important;
   }
 
   .section-title {
@@ -1501,6 +1513,11 @@ input[type="color"] {
 
   .settings-row > * {
     width: 100%;
+  }
+
+  .preview-container {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
   }
 
   .nav-buttons {

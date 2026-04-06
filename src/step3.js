@@ -743,6 +743,26 @@ export function renderTable() {
         return;
       }
 
+      if (state.whatsappStatus !== "ready") {
+        import("./toast.js").then(({ showToast }) =>
+          showToast(
+            "Please connect your WhatsApp device in the header first before sending.",
+            "warning",
+          ),
+        );
+        return;
+      }
+
+      if (state.placeholders.length === 0) {
+        const { showConfirm } = await import("./modal.js");
+        const proceed = await showConfirm(
+          "You haven't setup any text placeholders in Step 2 (Personalization). The invitation will be sent without any guest names on it. Continue anyway?",
+          "Missing Personalization",
+          "warning",
+        );
+        if (!proceed) return;
+      }
+
       const originalHTML = tempBtn.innerHTML;
       tempBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Sending...`;
       tempBtn.style.pointerEvents = "none";
@@ -832,8 +852,24 @@ async function sendAllToWhatsApp() {
     return;
   }
 
+  if (state.whatsappStatus !== "ready") {
+    import("./toast.js").then(({ showToast }) =>
+      showToast(
+        "Please connect your WhatsApp device in the header first before bulk sending.",
+        "warning",
+      ),
+    );
+    return;
+  }
+
+  let warningPrefix = "";
+  if (state.placeholders.length === 0) {
+    warningPrefix =
+      "WARNING: You haven't setup any text placeholders in Step 2. Your cards will be sent without names.\n\n";
+  }
+
   const confirmed = await showConfirm(
-    `Are you sure you want to send ${pendingRows.length} invitations? \n\nA 3s delay will be added between each to prevent spam flags.`,
+    `${warningPrefix}Are you sure you want to send ${pendingRows.length} invitations? \n\nPatience is key: A 3s delay will be added between each to prevent spam flags.`,
     "Bulk Automation Start",
     "success",
   );
