@@ -24,6 +24,7 @@ export const state = {
   csvData: {
     rows: [], // array of objects keyed by column header
     headers: [], // column header strings
+    phoneHeader: null, // explicit phone number column name
     blankCount: 0,
   },
 };

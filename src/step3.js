@@ -6,6 +6,7 @@
 import Papa from "papaparse";
 import { state, notify } from "./state.js";
 import { showToast } from "./toast.js";
+import { showConfirm, showPrompt } from "./modal.js";
 
 export function renderStep3() {
   return `
@@ -21,9 +22,13 @@ export function renderStep3() {
       <span class="dropzone-icon"><i class="fa-solid fa-file-csv"></i></span>
       <p class="dropzone-title">Drop CSV file here</p>
       <p class="dropzone-subtitle">or <span class="dropzone-browse" id="csv-browse-trigger">browse</span> — .csv files only</p>
-      <div style="margin-top: 8px;">
-        <span class="text-muted" style="font-size:0.8rem;">No CSV? </span>
-        <span id="manual-add-trigger" style="font-size:0.8rem; color:var(--accent-primary-light); cursor:pointer; text-decoration:underline;">Add guest list manually</span>
+      <div class="flex gap-sm justify-center mt-md">
+        <button class="btn btn-sm btn-secondary" id="manual-fields-btn" style="border-radius: var(--radius-full); padding: 8px 16px;">
+          <i class="fa-solid fa-square-plus" style="color:var(--accent-primary-light);"></i> Define Fields
+        </button>
+        <button class="btn btn-sm btn-secondary" id="manual-add-btn" style="border-radius: var(--radius-full); padding: 8px 16px;">
+          <i class="fa-solid fa-user-plus" style="color:var(--accent-secondary);"></i> Add Guest Manually
+        </button>
       </div>
       <input type="file" id="csv-file-input" accept=".csv" style="display:none;" />
     </div>
@@ -40,6 +45,22 @@ export function renderStep3() {
       </div>
       <p class="text-muted mb-md" style="font-size:0.85rem;">These will be available as <strong>{{placeholder}}</strong> variables in the personalization step.</p>
       <div class="page-pills" id="csv-columns-pills"></div>
+      
+      <div class="mt-lg p-md" style="background:rgba(37,211,102,0.05); border:1px solid rgba(37,211,102,0.2); border-radius:var(--radius-md);">
+        <div class="flex items-center gap-sm mb-sm">
+          <i class="fa-brands fa-whatsapp" style="color:#25D366; font-size:1.1rem;"></i>
+          <span style="font-weight:600; font-size:0.9rem;">Map Phone Number Column</span>
+        </div>
+        <p class="text-muted mb-sm" style="font-size:0.8rem;">Select the column that contains guest phone numbers (used for WhatsApp sending).</p>
+        <select class="form-select" id="phone-column-dropdown" style="max-width:250px; border-color:rgba(37,211,102,0.3); background:var(--bg-card);">
+          <option value="">-- Choose Column --</option>
+        </select>
+      </div>
+      <div class="mt-md">
+        <button class="btn btn-sm btn-outline" id="add-column-btn" style="font-size: 0.7rem; border-style: dashed; padding: 4px 10px; border-color: var(--accent-primary-light); color: var(--accent-primary-light);">
+          <i class="fa-solid fa-plus"></i> Add New Column
+        </button>
+      </div>
     </div>
 
     <!-- Stats -->
@@ -120,23 +141,28 @@ export function initStep3() {
     fileInput.value = "";
   });
 
-  const manualTrigger = document.getElementById("manual-add-trigger");
+  const manualAddBtn = document.getElementById("manual-add-btn");
+  const manualFieldsBtn = document.getElementById("manual-fields-btn");
 
-  manualTrigger.addEventListener("click", () => {
+  manualAddBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
     if (state.csvData.headers.length === 0) {
       state.csvData.headers = ["Name", "Phone", "Table"];
     }
-    // Add one empty row if they are starting from scratch
-    if (state.csvData.rows.length === 0) {
-      addRow();
-    }
+    // Add one empty row
+    addRow();
     showResults();
     notify();
   });
 
-  document.getElementById("edit-headers-btn")?.addEventListener("click", () => {
+  manualFieldsBtn?.addEventListener("click", async (e) => {
+    e.stopPropagation();
     const current = state.csvData.headers.join(", ");
-    const val = prompt("Enter column headers separated by commas:", current);
+    const val = await showPrompt(
+      "Enter column headers separated by commas (e.g. Name, Phone, Table):",
+      current || "Name, Phone, Table",
+      "Define Fields",
+    );
     if (val !== null) {
       const newHeaders = val
         .split(",")
@@ -144,11 +170,77 @@ export function initStep3() {
         .filter((h) => h.length > 0);
       if (newHeaders.length > 0) {
         state.csvData.headers = newHeaders;
+        // Auto-set phone header if it looks like phone
+        if (!state.csvData.phoneHeader) {
+          state.csvData.phoneHeader = newHeaders.find((h) =>
+            /phone|mobile|number|contact/i.test(h),
+          );
+        }
+
+        // If we have rows, update those rows to include the new/modified headers
+        state.csvData.rows.forEach((row) => {
+          newHeaders.forEach((h) => {
+            if (!(h in row)) row[h] = "";
+          });
+        });
         showResults();
         notify();
       }
     }
   });
+
+  document
+    .getElementById("phone-column-dropdown")
+    ?.addEventListener("change", (e) => {
+      state.csvData.phoneHeader = e.target.value || null;
+      renderTable();
+      notify();
+      if (state.csvData.phoneHeader) {
+        showToast(
+          `Phone number column set to: ${state.csvData.phoneHeader}`,
+          "success",
+        );
+      }
+    });
+
+  document
+    .getElementById("add-column-btn")
+    ?.addEventListener("click", async () => {
+      const val = await showPrompt("Enter new column name:", "", "Add Column");
+      if (val && val.trim().length > 0) {
+        const h = val.trim();
+        if (!state.csvData.headers.includes(h)) {
+          state.csvData.headers.push(h);
+          state.csvData.rows.forEach((row) => (row[h] = ""));
+          showResults();
+          notify();
+        } else {
+          showToast("Column already exists", "warning");
+        }
+      }
+    });
+
+  document
+    .getElementById("edit-headers-btn")
+    ?.addEventListener("click", async () => {
+      const current = state.csvData.headers.join(", ");
+      const val = await showPrompt(
+        "Enter column headers separated by commas:",
+        current,
+        "Edit Column Headers",
+      );
+      if (val !== null) {
+        const newHeaders = val
+          .split(",")
+          .map((h) => h.trim())
+          .filter((h) => h.length > 0);
+        if (newHeaders.length > 0) {
+          state.csvData.headers = newHeaders;
+          showResults();
+          notify();
+        }
+      }
+    });
 
   document
     .getElementById("download-csv-btn")
@@ -216,10 +308,43 @@ function showResults() {
   colCard.style.display = "";
   document.getElementById("csv-columns-pills").innerHTML = headers
     .map(
-      (h) =>
-        `<span class="page-pill active" style="cursor:default;">{{${h}}}</span>`,
+      (h) => `
+      <span class="page-pill ${h === state.csvData.phoneHeader ? "active" : ""}" style="cursor:pointer; ${h === state.csvData.phoneHeader ? "background:var(--success); border-color:var(--success);" : ""}" onclick="document.dispatchEvent(new CustomEvent('set-phone-header', {detail: '${h}'})) ">
+        ${h === state.csvData.phoneHeader ? '<i class="fa-solid fa-phone"></i> ' : ""}{{${h}}}
+      </span>`,
     )
     .join("");
+
+  // Update phone dropdown
+  const dropdown = document.getElementById("phone-column-dropdown");
+  if (dropdown) {
+    // Attempt auto-fill if not set
+    if (!state.csvData.phoneHeader) {
+      state.csvData.phoneHeader = headers.find((h) =>
+        /phone|mobile|number|contact/i.test(h),
+      );
+    }
+
+    dropdown.innerHTML =
+      '<option value="">-- Choose Column --</option>' +
+      headers
+        .map(
+          (h) =>
+            `<option value="${h}" ${h === state.csvData.phoneHeader ? "selected" : ""}>${h}</option>`,
+        )
+        .join("");
+  }
+
+  // Listen for custom event from pill click
+  document.addEventListener(
+    "set-phone-header",
+    (e) => {
+      state.csvData.phoneHeader = e.detail;
+      showResults();
+      notify();
+    },
+    { once: true },
+  );
 
   // Stats
   document.getElementById("csv-stats").style.display = "";
@@ -292,12 +417,26 @@ export function renderTable() {
     .map((row, i) => {
       const isSent = row.__sent__ === true;
       let phoneTxt = "";
-      for (const h of headers) {
-        const val = (row[h] || "").toString().trim();
-        if (val.replace(/[^0-9]/g, "").length >= 10) {
-          phoneTxt = val.replace(/[^0-9+]/g, "");
-          break;
+
+      if (state.csvData.phoneHeader) {
+        phoneTxt = (row[state.csvData.phoneHeader] || "").toString().trim();
+      } else {
+        // Fallback auto-detection if no explicit header
+        for (const h of headers) {
+          const val = (row[h] || "").toString().trim();
+          if (val.replace(/[^0-9]/g, "").length >= 10) {
+            phoneTxt = val;
+            break;
+          }
         }
+      }
+
+      // Format for WhatsApp: Remove all non-digits, keep leading + if present
+      phoneTxt = phoneTxt.replace(/[^0-9+]/g, "");
+
+      // Handle Indian context: if 10 digits, prefix with 91
+      if (phoneTxt.length === 10 && !phoneTxt.startsWith("+")) {
+        phoneTxt = "91" + phoneTxt;
       }
 
       const hasPhone = phoneTxt.length >= 10;
@@ -534,13 +673,12 @@ async function sendAllToWhatsApp() {
     return;
   }
 
-  if (
-    !confirm(
-      `Are you sure you want to send ${pendingRows.length} remaining invitations automatically? \n\nA small delay (3s) will be added between each send to prevent WhatsApp spam flags.`,
-    )
-  ) {
-    return;
-  }
+  const confirmed = await showConfirm(
+    `Are you sure you want to send ${pendingRows.length} invitations? \n\nA 3s delay will be added between each to prevent spam flags.`,
+    "Bulk Automation Start",
+    "success",
+  );
+  if (!confirmed) return;
 
   btn.disabled = true;
   btn.style.opacity = "0.7";
@@ -559,15 +697,25 @@ async function sendAllToWhatsApp() {
 
     // Find phone number
     let phone = "";
-    for (const h of headers) {
-      const val = (row[h] || "").toString().trim();
-      if (val.replace(/[^0-9]/g, "").length >= 10) {
-        phone = val.replace(/[^0-9+]/g, "");
-        break;
+    if (state.csvData.phoneHeader) {
+      phone = (row[state.csvData.phoneHeader] || "").toString().trim();
+    } else {
+      for (const h of headers) {
+        const val = (row[h] || "").toString().trim();
+        if (val.replace(/[^0-9]/g, "").length >= 10) {
+          phone = val;
+          break;
+        }
       }
     }
 
-    if (!phone) {
+    // Format for WhatsApp
+    phone = phone.replace(/[^0-9+]/g, "");
+    if (phone.length === 10 && !phone.startsWith("+")) {
+      phone = "91" + phone;
+    }
+
+    if (!phone || phone.length < 10) {
       console.warn(`Row ${i + 1} has no phone number, skipping.`);
       failCount++;
       continue;
@@ -655,8 +803,13 @@ async function sendAllToWhatsApp() {
   }, 5000);
 }
 
-function clearCSV() {
-  if (!confirm("Are you sure you want to clear all guest data?")) return;
+async function clearCSV() {
+  const confirmed = await showConfirm(
+    "Permanently clear all guest data?",
+    "Clear Data",
+    "danger",
+  );
+  if (!confirmed) return;
   state.csvData = { rows: [], headers: [], blankCount: 0 };
   document.getElementById("csv-stats").style.display = "none";
   document.getElementById("csv-actions").style.display = "none";

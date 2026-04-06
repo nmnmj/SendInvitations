@@ -1,4 +1,5 @@
 import { state } from "./state.js";
+import { showConfirm } from "./modal.js";
 
 let pollTimer = null;
 
@@ -150,7 +151,12 @@ function renderModalContent() {
 }
 
 async function handleLogout() {
-  if (!confirm("Disconnect your WhatsApp session?")) return;
+  const confirmed = await showConfirm(
+    "Disconnect your WhatsApp session? You'll need to re-scan the QR code to use automation features.",
+    "Disconnect WhatsApp",
+    "danger",
+  );
+  if (!confirmed) return;
 
   state.whatsappStatus = "not_started";
   state.whatsappQR = null;

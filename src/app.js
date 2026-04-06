@@ -8,6 +8,8 @@ import { renderStep1, initStep1 } from "./step1.js";
 import { renderStep2, initStep2 } from "./step2.js";
 import { renderStep3, initStep3 } from "./step3.js";
 import { renderStep4, initStep4 } from "./step4.js";
+import { initOnboarding, showOnboarding } from "./onboarding.js";
+import { showConfirm } from "./modal.js";
 
 const STEPS = [
   {
@@ -53,6 +55,9 @@ export class App {
     // Start WhatsApp multi-user polling
     initWhatsAppHub();
 
+    // Initialize Onboarding (walkthrough) if not disabled
+    initOnboarding();
+
     if (restored) {
       showToast(
         `Session restored — ${state.images.length} images, ${state.csvData.rows.length} rows loaded`,
@@ -76,6 +81,9 @@ export class App {
           </div>
           <div class="flex items-center gap-md">
             <div id="whatsapp-hub-container"></div>
+            <button class="btn btn-primary btn-sm" id="help-btn" style="background:var(--accent-gradient-2); border:none;" title="How to use this app">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> <span>How it Works</span>
+            </button>
             <div class="session-badge" id="session-badge" title="Session auto-saved to browser storage">
               <i class="fa-solid fa-cloud-arrow-up"></i> <span>Auto-saved</span>
             </div>
@@ -152,13 +160,13 @@ export class App {
     // Reset / Clear session button
     document
       .getElementById("clear-session-btn")
-      ?.addEventListener("click", () => {
-        if (
-          !confirm(
-            "Reset all data? This will clear images, placeholders, guest list and step progress.",
-          )
-        )
-          return;
+      ?.addEventListener("click", async () => {
+        const confirmed = await showConfirm(
+          "This will clear all your uploaded images, personalization, and guest list. Are you sure?",
+          "Clear Entire Session",
+          "danger",
+        );
+        if (!confirmed) return;
         clearState();
         // Reset state in-place
         state.currentStep = 0;
@@ -175,6 +183,11 @@ export class App {
         this.render();
         showToast("Session cleared — starting fresh", "info");
       });
+
+    // Help Button
+    document.getElementById("help-btn")?.addEventListener("click", () => {
+      showOnboarding();
+    });
 
     // Ensure WhatsApp hub is rendered
     renderHub();
