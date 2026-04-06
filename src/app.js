@@ -1,7 +1,7 @@
 /**
  * App — Main orchestrator with stepper navigation + session persistence
  */
-import { state, restoreSession } from "./state.js";
+import { state, restoreSession, notify } from "./state.js";
 import { clearState } from "./persistence.js";
 import { showToast } from "./toast.js";
 import { renderStep1, initStep1 } from "./step1.js";
@@ -58,6 +58,17 @@ export class App {
     // Initialize Onboarding (walkthrough) if not disabled
     initOnboarding();
 
+    // Prevent Space bar from triggering any button globally (standard fix for "Space bar clicks button")
+    window.addEventListener(
+      "keydown",
+      (e) => {
+        if (e.key === " " && e.target.tagName === "BUTTON") {
+          e.preventDefault();
+        }
+      },
+      true,
+    );
+
     if (restored) {
       showToast(
         `Session restored — ${state.images.length} images, ${state.csvData.rows.length} rows loaded`,
@@ -67,8 +78,47 @@ export class App {
     }
   }
 
+  renderGuide(step) {
+    const guides = [
+      {
+        icon: "fa-images",
+        action: "Upload your invitation card images",
+        hint: "Drag & drop or browse — JPEG/PNG supported. You can reorder pages after uploading.",
+      },
+      {
+        icon: "fa-wand-magic-sparkles",
+        action: "Position text placeholders on your card",
+        hint: "Add fields like {{Name}} and drag them into place on the preview canvas.",
+      },
+      {
+        icon: "fa-address-book",
+        action: "Import or create your guest list",
+        hint: "Upload a CSV file or manually add guests. Column names become placeholders.",
+      },
+      {
+        icon: "fa-paper-plane",
+        action: "Review & generate personalized invitations",
+        hint: "Check everything looks right, then download PDFs or send via WhatsApp.",
+      },
+    ];
+
+    const g = guides[step];
+    return `
+      <div class="step-guide">
+        <div class="guide-icon"><i class="fa-solid ${g.icon}"></i></div>
+        <div class="guide-content">
+          <h3>${g.action}</h3>
+          <p>${g.hint}</p>
+        </div>
+      </div>
+    `;
+  }
+
   render() {
     const step = state.currentStep;
+
+    const nextLabels = ["Personalize", "Guest List", "Generate", ""];
+    const prevLabels = ["", "Upload", "Personalize", "Guest List"];
 
     this.container.innerHTML = `
       <!-- Header -->
@@ -79,53 +129,61 @@ export class App {
             <span class="logo-text">InviteCraft</span>
             <span class="logo-badge">Pro</span>
           </div>
-          <div class="flex items-center gap-md">
+          <div class="header-actions">
             <div id="whatsapp-hub-container"></div>
-            <button class="btn btn-primary btn-sm" id="help-btn" style="background:var(--accent-gradient-2); border:none;" title="How to use this app">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> <span>How it Works</span>
-            </button>
-            <div class="session-badge" id="session-badge" title="Session auto-saved to browser storage">
-              <i class="fa-solid fa-cloud-arrow-up"></i> <span>Auto-saved</span>
+            <div class="btn btn-secondary btn-sm" id="help-btn" role="button" tabindex="-1" title="How to use this app">
+              <i class="fa-solid fa-circle-question"></i> <span>Guide</span>
             </div>
-            <button class="btn btn-danger btn-sm" id="clear-session-btn" title="Clear all data and start fresh">
+            <div class="session-badge" id="session-badge" title="Session auto-saved to browser storage">
+              <i class="fa-solid fa-cloud-arrow-up"></i> <span>Saved</span>
+            </div>
+            <div class="btn btn-danger btn-sm" id="clear-session-btn" role="button" tabindex="-1" title="Clear all data and start fresh">
               <i class="fa-solid fa-rotate-left"></i> <span>Reset</span>
-            </button>
+            </div>
           </div>
         </div>
       </header>
 
       <!-- Stepper -->
-      <nav class="stepper" id="stepper">
-        ${STEPS.map(
-          (s, i) => `
-          ${i > 0 ? `<div class="step-connector ${i <= step ? "completed" : ""}"></div>` : ""}
-          <div class="step-item ${i === step ? "active" : ""} ${i < step ? "completed" : ""}" data-step="${i}">
-            <div class="step-number">
-              ${i < step ? '<i class="fa-solid fa-check" style="font-size:0.7rem;"></i>' : i + 1}
+      <div class="stepper-container">
+        <nav class="stepper" id="stepper">
+          ${STEPS.map(
+            (s, i) => `
+            ${i > 0 ? `<div class="step-connector ${i <= step ? "completed" : ""}"></div>` : ""}
+            <div class="step-item ${i === step ? "active" : ""} ${i < step ? "completed" : ""}" data-step="${i}">
+              <div class="step-number">
+                ${i < step ? '<i class="fa-solid fa-check"></i>' : i + 1}
+              </div>
+              <span class="step-label">${s.label}</span>
             </div>
-            <span class="step-label">${s.label}</span>
-          </div>
-        `,
-        ).join("")}
-      </nav>
+          `,
+          ).join("")}
+        </nav>
+      </div>
 
       <!-- Content -->
       <main class="main-content" id="step-content">
-        ${STEPS[step].render()}
+        ${this.renderGuide(step)}
+        
+        <div class="step-inner-content">
+          ${STEPS[step].render()}
+        </div>
 
         <!-- Navigation -->
         <div class="nav-buttons">
           ${
             step > 0
-              ? `<button class="btn btn-secondary" id="prev-btn"><i class="fa-solid fa-arrow-left"></i> Back</button>`
+              ? `<div class="btn btn-secondary" id="prev-btn" role="button" tabindex="-1"><i class="fa-solid fa-arrow-left"></i> ${prevLabels[step]}</div>`
               : "<div></div>"
           }
           ${
             step < STEPS.length - 1
-              ? `<button class="btn btn-primary" id="next-btn">Next <i class="fa-solid fa-arrow-right"></i></button>`
+              ? `<div class="btn btn-primary btn-next" id="next-btn" role="button" tabindex="-1">Next: ${nextLabels[step]} <i class="fa-solid fa-arrow-right"></i></div>`
               : "<div></div>"
           }
         </div>
+
+
       </main>
     `;
 
@@ -136,23 +194,29 @@ export class App {
     this.container.querySelectorAll(".step-item").forEach((el) => {
       el.addEventListener("click", () => {
         const target = parseInt(el.dataset.step);
-        if (target <= step || target === step + 1) {
+        // Allow moving to any previous step or the next immediate step
+        if (target < step || target === step + 1) {
           state.currentStep = target;
+          notify();
           this.render();
         }
       });
     });
 
     // Prev / Next buttons
-    document.getElementById("prev-btn")?.addEventListener("click", () => {
+    document.getElementById("prev-btn")?.addEventListener("click", (e) => {
+      e.currentTarget.blur();
       if (state.currentStep > 0) {
         state.currentStep--;
+        notify();
         this.render();
       }
     });
-    document.getElementById("next-btn")?.addEventListener("click", () => {
+    document.getElementById("next-btn")?.addEventListener("click", (e) => {
+      e.currentTarget.blur();
       if (state.currentStep < STEPS.length - 1) {
         state.currentStep++;
+        notify();
         this.render();
       }
     });

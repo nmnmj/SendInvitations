@@ -10,28 +10,44 @@ import { showConfirm, showPrompt } from "./modal.js";
 
 export function renderStep3() {
   return `
-    <div class="section-header">
-      <h1 class="section-title">Upload Guest List</h1>
-      <p class="section-subtitle">
-        Upload a CSV file with any columns (e.g. <code style="background:var(--bg-input);padding:2px 8px;border-radius:4px;color:var(--accent-primary-light);">f1, f2, f3, f4</code>).
-        Each column header becomes a placeholder variable you can position on your invitation in Step 2.
-      </p>
+    <div class="row items-stretch gap-lg">
+      <div class="col flex-1">
+        <div class="card h-full">
+          <div class="card-header">
+            <div class="card-header-icon pink"><i class="fa-solid fa-file-csv"></i></div>
+            <span class="card-title">Upload Guest List</span>
+          </div>
+          <p class="text-muted mb-lg" style="font-size:0.85rem;">Upload a CSV file or start by defining your fields manually.</p>
+          <div class="dropzone h-full" id="csv-dropzone" style="min-height:220px;">
+            <span class="dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+            <p class="dropzone-title">Drop CSV file here</p>
+            <p class="dropzone-subtitle">or <span class="dropzone-browse" id="csv-browse-trigger">browse</span></p>
+            <input type="file" id="csv-file-input" accept=".csv" style="display:none;" />
+          </div>
+        </div>
+      </div>
+
+      <div class="col" style="width:350px;">
+        <div class="card h-full" style="border-style:dashed;">
+          <div class="card-header">
+            <div class="card-header-icon purple"><i class="fa-solid fa-plus"></i></div>
+            <span class="card-title">Start Manually</span>
+          </div>
+          <p class="text-muted mb-lg" style="font-size:0.85rem;">Don't have a CSV? You can define your own columns and add guests one by one.</p>
+          <div class="flex flex-column gap-sm">
+            <div class="btn btn-secondary w-full" id="manual-fields-btn" role="button" tabindex="-1">
+              <i class="fa-solid fa-table-columns"></i> 1. Define Fields
+            </div>
+            <div class="btn btn-primary w-full" id="manual-add-btn" role="button" tabindex="-1">
+              <i class="fa-solid fa-user-plus"></i> 2. Add Your First Guest
+            </div>
+          </div>
+
+
+        </div>
+      </div>
     </div>
 
-    <div class="dropzone" id="csv-dropzone">
-      <span class="dropzone-icon"><i class="fa-solid fa-file-csv"></i></span>
-      <p class="dropzone-title">Drop CSV file here</p>
-      <p class="dropzone-subtitle">or <span class="dropzone-browse" id="csv-browse-trigger">browse</span> — .csv files only</p>
-      <div class="flex gap-sm justify-center mt-md">
-        <button class="btn btn-sm btn-secondary" id="manual-fields-btn" style="border-radius: var(--radius-full); padding: 8px 16px;">
-          <i class="fa-solid fa-square-plus" style="color:var(--accent-primary-light);"></i> Define Fields
-        </button>
-        <button class="btn btn-sm btn-secondary" id="manual-add-btn" style="border-radius: var(--radius-full); padding: 8px 16px;">
-          <i class="fa-solid fa-user-plus" style="color:var(--accent-secondary);"></i> Add Guest Manually
-        </button>
-      </div>
-      <input type="file" id="csv-file-input" accept=".csv" style="display:none;" />
-    </div>
 
     <!-- Detected columns display -->
     <div class="card mt-lg" id="csv-columns-card" style="display:none;">
@@ -96,18 +112,20 @@ export function renderStep3() {
 
     <!-- Actions -->
     <div class="flex gap-sm flex-wrap mt-lg" id="csv-actions" style="display:none;">
-      <button class="btn btn-success" id="download-csv-btn"><i class="fa-solid fa-download"></i> Download CSV</button>
+      <div class="btn btn-success" id="download-csv-btn" role="button" tabindex="-1"><i class="fa-solid fa-download"></i> Download CSV</div>
       <div class="flex items-center gap-sm px-md py-xs" style="background:var(--bg-input); border-radius:var(--radius-md); border:1px solid var(--border-color);">
         <label class="flex items-center gap-xs cursor-pointer" style="font-size:0.85rem; user-select:none;">
-          <input type="checkbox" id="hindi-mode-toggle" style="width:16px; height:16px; accent-color:var(--accent-primary);" ${state.csvData.hindiMode ? "checked" : ""}>
+          <input type="checkbox" id="hindi-mode-toggle" tabindex="-1" style="width:16px; height:16px; accent-color:var(--accent-primary);" ${state.csvData.hindiMode ? "checked" : ""}>
           <span>Hindi Input Mode</span>
         </label>
         <span class="hint-btn" title="When ON, your typing (English) into cells will automatically convert to Hindi Devnagri script when you hit Space."><i class="fa-solid fa-circle-question" style="opacity:0.5; font-size:0.9rem;"></i></span>
       </div>
-      <button class="btn btn-accent" id="send-all-wa-btn" style="background:#25D366; color:white;"><i class="fa-brands fa-whatsapp"></i> Send All to WhatsApp</button>
+      <div class="btn btn-accent" id="send-all-wa-btn" style="background:#25D366; color:white;" role="button" tabindex="-1"><i class="fa-brands fa-whatsapp"></i> Send All to WhatsApp</div>
       <div id="wa-batch-status-inline" class="flex items-center gap-sm mt-sm" style="font-size:0.75rem; color:var(--text-muted);"></div>
-      <button class="btn btn-danger" id="clear-csv-btn"><i class="fa-solid fa-trash"></i> Clear Data</button>
+      <div class="btn btn-danger" id="clear-csv-btn" role="button" tabindex="-1"><i class="fa-solid fa-trash"></i> Clear Data</div>
     </div>
+
+
 
     <!-- Info report -->
     <div id="csv-info-report" class="mt-lg"></div>
@@ -418,10 +436,13 @@ function showResults() {
   // Add Row button if it doesn't exist
   if (!document.getElementById("add-row-manual-btn")) {
     const act = document.getElementById("csv-actions");
-    const addBtn = document.createElement("button");
+    const addBtn = document.createElement("div");
     addBtn.className = "btn btn-outline";
     addBtn.id = "add-row-manual-btn";
+    addBtn.role = "button";
+    addBtn.tabIndex = -1;
     addBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Add One Guest`;
+
     addBtn.onclick = () => {
       addRow();
       renderTable();
@@ -544,15 +565,17 @@ export function renderTable() {
       const text = node.textContent || "";
       const pos = range.startOffset;
 
-      // If triggered by 'input' event, the space is already at pos-1
-      const isInputSpace = e.type === "input" && e.data === " ";
-      const lookbackPos = isInputSpace ? pos - 1 : pos;
+      // If triggered by 'input' event, the space/newline is already at pos-1
+      const isInputInserted = e.type === "input";
+      const lookbackPos = isInputInserted ? pos - 1 : pos;
 
       const textBefore = text.substring(0, lookbackPos);
+
+      // Check if there's a word to transliterate
       const lastWordMatch = textBefore.match(/(\S+)$/);
 
       if (lastWordMatch) {
-        // If keydown, we prevent default to control space insertion
+        // If keydown, we prevent default to control character insertion
         if (e.type === "keydown") e.preventDefault();
 
         const word = lastWordMatch[1];
@@ -560,15 +583,35 @@ export function renderTable() {
 
         try {
           const hindiWord = await transliterateWord(word);
+
+          // If no change, just continue (avoids unnecessary cursor jumping)
+          if (hindiWord === word) {
+            if (e.type === "keydown") {
+              const extra = isManualKey === "Enter" ? "\n" : " ";
+              const newText =
+                text.substring(0, pos) + extra + text.substring(pos);
+              node.textContent = newText;
+              const newRange = document.createRange();
+              newRange.setStart(node, pos + 1);
+              newRange.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(newRange);
+            }
+            return;
+          }
+
           const extra = isManualKey === "Enter" ? "\n" : " ";
 
           let newText;
-          if (isInputSpace) {
-            // Space is already there at pos-1
+          if (isInputInserted) {
+            // Already has the space/newline inserted by the browser
+            // We just need to replace the word part
             newText =
-              text.substring(0, start) + hindiWord + " " + text.substring(pos);
+              text.substring(0, start) +
+              hindiWord +
+              text.substring(lookbackPos);
           } else {
-            // Space/Enter not there yet
+            // Keydown, we need to add the extra char ourselves
             newText =
               text.substring(0, start) +
               hindiWord +
@@ -578,9 +621,12 @@ export function renderTable() {
 
           node.textContent = newText;
 
-          // Restore cursor position
+          // Restore cursor
           const newRange = document.createRange();
-          const newPos = start + hindiWord.length + 1;
+          const newPos =
+            start +
+            hindiWord.length +
+            (isInputInserted ? pos - lookbackPos : 1);
           newRange.setStart(node, Math.min(newPos, node.textContent.length));
           newRange.collapse(true);
           selection.removeAllRanges();
@@ -590,8 +636,6 @@ export function renderTable() {
           const idx = cell.dataset.index;
           const header = cell.dataset.header;
           state.csvData.rows[idx][header] = node.textContent;
-
-          // Update stats
           state.csvData.blankCount = calculateBlankCount();
           const blanksEl = document.getElementById("stat-blanks");
           if (blanksEl) blanksEl.textContent = state.csvData.blankCount;
@@ -604,14 +648,16 @@ export function renderTable() {
 
     cell.addEventListener("keydown", async (e) => {
       if (!state.csvData.hindiMode) return;
-      // Use both key and keyCode for wider mobile compatibility
+      cell._keyboardHandled = false;
+
       const isSpace = e.key === " " || e.keyCode === 32;
       const isEnter = e.key === "Enter" || e.keyCode === 13;
 
       if (isSpace || isEnter) {
-        // On many mobile browsers, e.key is "Unidentified" or keyCode is 229 during composition
-        // we'll let the 'input' event handle those cases.
+        // Detect Standard Keyboard (not IME/Mobile)
         if (e.key !== "Unidentified" && e.keyCode !== 229) {
+          cell._keyboardHandled = true;
+          e.stopImmediatePropagation();
           await handleTransliteration(e, isEnter ? "Enter" : "Space");
         }
       }
@@ -619,9 +665,20 @@ export function renderTable() {
 
     cell.addEventListener("input", async (e) => {
       if (!state.csvData.hindiMode) return;
-      // Fallback for mobile keyboards that don't fire precise keydown events
-      if (e.data === " ") {
-        await handleTransliteration(e, "Space");
+
+      // Standard space or Enter on mobile/IME
+      const isSpace = e.data === " ";
+      const isEnter =
+        e.inputType === "insertParagraph" || e.inputType === "insertLineBreak";
+
+      if (isSpace || isEnter) {
+        // If it was already handled by keydown (Desktop), skip it in input event
+        if (cell._keyboardHandled) {
+          cell._keyboardHandled = false;
+          return;
+        }
+        e.stopImmediatePropagation();
+        await handleTransliteration(e, isEnter ? "Enter" : "Space");
       }
     });
 
@@ -949,6 +1006,9 @@ function calculateBlankCount() {
 
 async function transliterateWord(word) {
   if (!word) return "";
+  // Check if word contains any English alphabets. If not, no need to transliterate.
+  if (!/[a-zA-Z]/.test(word)) return word;
+
   const url = `https://inputtools.google.com/request?itc=hi-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=test&text=${encodeURIComponent(word)}`;
   const res = await fetch(url);
   const data = await res.json();

@@ -8,12 +8,8 @@ import { showToast } from "./toast.js";
 let sortableInstance = null;
 
 export function renderStep1() {
+  const hasImages = state.images.length > 0;
   return `
-    <div class="section-header">
-      <h1 class="section-title">Upload Your Invitation Images</h1>
-      <p class="section-subtitle">Drag and drop your images below or click to browse. Reorder them to set the page sequence in your PDF.</p>
-    </div>
-
     <!-- Drop zone -->
     <div class="dropzone" id="image-dropzone">
       <span class="dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
@@ -23,55 +19,58 @@ export function renderStep1() {
     </div>
 
     <!-- Image grid -->
+    ${hasImages ? `<p class="text-muted mt-md" style="font-size:0.82rem;"><i class="fa-solid fa-grip-vertical"></i> Drag to reorder pages &bull; ${state.images.length} image${state.images.length > 1 ? "s" : ""} uploaded</p>` : ""}
     <div class="image-grid" id="image-grid"></div>
 
-    <!-- PDF Settings -->
-    <div class="settings-grid mt-xl" id="pdf-settings-panel" style="${state.images.length ? "" : "display:none"}">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-header-icon purple"><i class="fa-solid fa-file-pdf"></i></div>
-          <span class="card-title">Page Settings</span>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Page Size</label>
-          <select class="form-select" id="page-size-select">
-            <option value="A4" ${state.pdfSettings.pageSize === "A4" ? "selected" : ""}>A4 (210 × 297 mm)</option>
-            <option value="Letter" ${state.pdfSettings.pageSize === "Letter" ? "selected" : ""}>Letter (8.5 × 11 in)</option>
-            <option value="Custom" ${state.pdfSettings.pageSize === "Custom" ? "selected" : ""}>Custom Size</option>
-          </select>
-        </div>
-        <div class="settings-row ${state.pdfSettings.pageSize === "Custom" ? "" : "hidden"}" id="custom-size-row">
-          <div class="form-group">
-            <label class="form-label">Width (mm)</label>
-            <input type="number" class="form-input" id="custom-width" value="${state.pdfSettings.customWidth}" min="50" max="1000" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Height (mm)</label>
-            <input type="number" class="form-input" id="custom-height" value="${state.pdfSettings.customHeight}" min="50" max="1000" />
-          </div>
-        </div>
+    <!-- PDF Settings — collapsible -->
+    <div class="card mt-xl collapsible-card" id="pdf-settings-panel" style="${hasImages ? "" : "display:none"}">
+      <div class="card-header collapsible-toggle" id="settings-toggle" style="cursor:pointer; margin-bottom:0;">
+        <div class="card-header-icon purple"><i class="fa-solid fa-sliders"></i></div>
+        <span class="card-title">PDF & Page Settings</span>
+        <div style="flex:1;"></div>
+        <span class="text-muted" style="font-size:0.8rem;" id="settings-summary">${state.pdfSettings.pageSize} · ${state.pdfSettings.orientation} · ${state.pdfSettings.scaling}</span>
+        <i class="fa-solid fa-chevron-down settings-chevron" id="settings-chevron" style="color:var(--text-muted); font-size:0.8rem; margin-left:8px; transition: transform 0.2s;"></i>
       </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-header-icon pink"><i class="fa-solid fa-arrows-rotate"></i></div>
-          <span class="card-title">Image Options</span>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Orientation</label>
-          <select class="form-select" id="orientation-select">
-            <option value="auto" ${state.pdfSettings.orientation === "auto" ? "selected" : ""}>Auto-detect</option>
-            <option value="portrait" ${state.pdfSettings.orientation === "portrait" ? "selected" : ""}>Portrait</option>
-            <option value="landscape" ${state.pdfSettings.orientation === "landscape" ? "selected" : ""}>Landscape</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Scaling Mode</label>
-          <select class="form-select" id="scaling-select">
-            <option value="fit" ${state.pdfSettings.scaling === "fit" ? "selected" : ""}>Fit (preserve ratio, may have margins)</option>
-            <option value="fill" ${state.pdfSettings.scaling === "fill" ? "selected" : ""}>Fill (preserve ratio, may crop)</option>
-            <option value="stretch" ${state.pdfSettings.scaling === "stretch" ? "selected" : ""}>Stretch (fill page exactly)</option>
-          </select>
+      <div class="settings-body" id="settings-body" style="display:none; margin-top: var(--space-lg);">
+        <div class="settings-grid">
+          <div>
+            <div class="form-group">
+              <label class="form-label">Page Size</label>
+              <select class="form-select" id="page-size-select">
+                <option value="A4" ${state.pdfSettings.pageSize === "A4" ? "selected" : ""}>A4 (210 × 297 mm)</option>
+                <option value="Letter" ${state.pdfSettings.pageSize === "Letter" ? "selected" : ""}>Letter (8.5 × 11 in)</option>
+                <option value="Custom" ${state.pdfSettings.pageSize === "Custom" ? "selected" : ""}>Custom Size</option>
+              </select>
+            </div>
+            <div class="settings-row ${state.pdfSettings.pageSize === "Custom" ? "" : "hidden"}" id="custom-size-row">
+              <div class="form-group">
+                <label class="form-label">Width (mm)</label>
+                <input type="number" class="form-input" id="custom-width" value="${state.pdfSettings.customWidth}" min="50" max="1000" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Height (mm)</label>
+                <input type="number" class="form-input" id="custom-height" value="${state.pdfSettings.customHeight}" min="50" max="1000" />
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="form-group">
+              <label class="form-label">Orientation</label>
+              <select class="form-select" id="orientation-select">
+                <option value="auto" ${state.pdfSettings.orientation === "auto" ? "selected" : ""}>Auto-detect</option>
+                <option value="portrait" ${state.pdfSettings.orientation === "portrait" ? "selected" : ""}>Portrait</option>
+                <option value="landscape" ${state.pdfSettings.orientation === "landscape" ? "selected" : ""}>Landscape</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Scaling Mode</label>
+              <select class="form-select" id="scaling-select">
+                <option value="fit" ${state.pdfSettings.scaling === "fit" ? "selected" : ""}>Fit (preserve ratio)</option>
+                <option value="fill" ${state.pdfSettings.scaling === "fill" ? "selected" : ""}>Fill (may crop)</option>
+                <option value="stretch" ${state.pdfSettings.scaling === "stretch" ? "selected" : ""}>Stretch (exact fill)</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -110,6 +109,24 @@ export function initStep1() {
     fileInput.value = "";
   });
 
+  // Settings toggle (collapsible)
+  const settingsToggle = document.getElementById("settings-toggle");
+  const settingsBody = document.getElementById("settings-body");
+  const settingsChevron = document.getElementById("settings-chevron");
+  if (settingsToggle) {
+    settingsToggle.addEventListener("click", () => {
+      const isHidden = settingsBody.style.display === "none";
+      settingsBody.style.display = isHidden ? "" : "none";
+      settingsChevron.style.transform = isHidden ? "rotate(180deg)" : "";
+    });
+  }
+
+  function updateSettingsSummary() {
+    const el = document.getElementById("settings-summary");
+    if (el)
+      el.textContent = `${state.pdfSettings.pageSize} · ${state.pdfSettings.orientation} · ${state.pdfSettings.scaling}`;
+  }
+
   // Settings listeners
   document
     .getElementById("page-size-select")
@@ -118,16 +135,19 @@ export function initStep1() {
       document
         .getElementById("custom-size-row")
         .classList.toggle("hidden", e.target.value !== "Custom");
+      updateSettingsSummary();
       notify();
     });
   document
     .getElementById("orientation-select")
     .addEventListener("change", (e) => {
       state.pdfSettings.orientation = e.target.value;
+      updateSettingsSummary();
       notify();
     });
   document.getElementById("scaling-select").addEventListener("change", (e) => {
     state.pdfSettings.scaling = e.target.value;
+    updateSettingsSummary();
     notify();
   });
   document.getElementById("custom-width")?.addEventListener("input", (e) => {

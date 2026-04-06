@@ -72,85 +72,110 @@ export function renderStep4() {
   const unlinkedCount = phCount - linkedCount;
 
   return `
-    <div class="generate-hero">
-      <span class="generate-hero-icon">🎉</span>
-      <h2>Ready to Generate Invitations</h2>
-      <p>Review your setup below and click generate to create personalized PDFs for each row in your CSV.</p>
+    <div class="row gap-xl items-start">
+      <div class="col flex-1">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-icon purple"><i class="fa-solid fa-list-check"></i></div>
+            <span class="card-title">Final Checklist</span>
+          </div>
+          
+          <ul class="checklist">
+            <li class="${imgDone ? "completed" : "pending"}">
+              <div class="check-circle"><i class="fa-solid ${imgDone ? "fa-check" : "fa-clock"}"></i></div>
+              <div class="check-text">
+                <strong>Templates Uploaded</strong>
+                <span>${imgCount} image${imgCount !== 1 ? "s" : ""} detected</span>
+              </div>
+            </li>
+            <li class="${phCount > 0 ? "completed" : "pending"}">
+              <div class="check-circle"><i class="fa-solid ${phCount > 0 ? "fa-check" : "fa-clock"}"></i></div>
+              <div class="check-text">
+                <strong>Personalization Set</strong>
+                <span>${phCount} placeholder${phCount !== 1 ? "s" : ""} added ${linkedCount > 0 ? `(${linkedCount} linked)` : ""}</span>
+              </div>
+            </li>
+            <li class="${csvDone ? "completed" : "pending"}">
+              <div class="check-circle"><i class="fa-solid ${csvDone ? "fa-check" : "fa-clock"}"></i></div>
+              <div class="check-text">
+                <strong>Guest List Ready</strong>
+                <span>${rowCount} guest${rowCount !== 1 ? "s" : ""} across ${colCount} columns</span>
+              </div>
+            </li>
+          </ul>
 
-      <div class="card text-left" style="max-width:550px;margin:0 auto var(--space-xl);text-align:left;">
-        <ul class="checklist">
-          <li>
-            <span class="check-icon ${imgDone ? "done" : "pending"}">
-              <i class="fa-solid ${imgDone ? "fa-check" : "fa-minus"}"></i>
-            </span>
-            <span>${imgCount} image${imgCount !== 1 ? "s" : ""} uploaded (${imgCount} page${imgCount !== 1 ? "s" : ""})</span>
-          </li>
-          <li>
-            <span class="check-icon ${phCount > 0 ? "done" : "pending"}">
-              <i class="fa-solid ${phCount > 0 ? "fa-check" : "fa-minus"}"></i>
-            </span>
-            <span>${phCount} placeholder${phCount !== 1 ? "s" : ""} defined${linkedCount > 0 ? ` (${linkedCount} linked to CSV)` : ""}</span>
-          </li>
           ${
             unlinkedCount > 0
               ? `
-          <li>
-            <span class="check-icon pending">
-              <i class="fa-solid fa-minus"></i>
-            </span>
-            <span style="color:var(--warning);">${unlinkedCount} placeholder${unlinkedCount !== 1 ? "s" : ""} not linked to any CSV column — will be blank</span>
-          </li>
+          <div class="alert alert-warning mt-lg">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <div>
+              <strong>${unlinkedCount} Unlinked Variable${unlinkedCount !== 1 ? "s" : ""}</strong>
+              <p>Some placeholders aren't connected to CSV columns. They will appear blank on the PDF.</p>
+            </div>
+          </div>
           `
               : ""
           }
-          <li>
-            <span class="check-icon ${csvDone ? "done" : "pending"}">
-              <i class="fa-solid ${csvDone ? "fa-check" : "fa-minus"}"></i>
-            </span>
-            <span>${rowCount} row${rowCount !== 1 ? "s" : ""} × ${colCount} column${colCount !== 1 ? "s" : ""} in CSV</span>
-          </li>
-          <li>
-            <span class="check-icon done">
-              <i class="fa-solid fa-check"></i>
-            </span>
-            <span>Hindi (हिन्दी) & multilingual text supported</span>
-          </li>
-        </ul>
-
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color);">
-          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 5px;">WhatsApp Phone Number Column (Optional)</label>
-          <select class="form-input" id="whatsapp-col-select" style="max-width: 100%;">
-            <option value="">-- Do not generate WhatsApp links --</option>
-            ${csvHeaders
-              .map((h) => {
-                const isSelected = h === state.csvData.phoneHeader;
-                return `<option value="${h}" ${isSelected ? "selected" : ""}>${h}</option>`;
-              })
-              .join("")}
-          </select>
-          <p class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">If selected, PDF filenames will append this number, and you'll get individual Click-to-Chat links below.</p>
         </div>
       </div>
 
-      <button class="generate-btn" id="generate-btn" ${!imgDone || !csvDone ? "disabled" : ""}>
-        <i class="fa-solid fa-wand-magic-sparkles"></i>
-        Generate ${rowCount} PDF${rowCount !== 1 ? "s" : ""}
-      </button>
+      <div class="col" style="width: 400px;">
+        <div class="card highlight-card">
+          <div class="card-header">
+            <div class="card-header-icon green"><i class="fa-solid fa-bolt"></i></div>
+            <span class="card-title">Primary Actions</span>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">WhatsApp Number Column</label>
+            <select class="form-select" id="whatsapp-col-select">
+              <option value="">-- No WhatsApp Links --</option>
+              ${csvHeaders
+                .map((h) => {
+                  const isSelected = h === state.csvData.phoneHeader;
+                  return `<option value="${h}" ${isSelected ? "selected" : ""}>${h}</option>`;
+                })
+                .join("")}
+            </select>
+          </div>
 
-      <div class="progress-container" id="progress-container" style="display:none;">
-        <div class="progress-bar-wrap">
-          <div class="progress-bar" id="progress-bar"></div>
+          <button class="btn btn-primary btn-lg w-full" id="generate-btn" ${!imgDone || !csvDone ? "disabled" : ""}>
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            Generate ${rowCount} Invitation${rowCount !== 1 ? "s" : ""}
+          </button>
+
+          ${
+            !imgDone || !csvDone
+              ? `
+          <p class="text-muted mt-md" style="font-size:0.8rem; text-align:center;">
+            <i class="fa-solid fa-circle-info"></i>
+            ${!imgDone && !csvDone ? "Upload images and add guests first" : !imgDone ? "Upload images in Step 1 first" : "Add guests in Step 3 first"}
+          </p>
+          `
+              : ""
+          }
+
+          <div class="progress-container mt-lg" id="progress-container" style="display:none;">
+            <div class="progress-bar-wrap">
+              <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <p class="progress-text" id="progress-text">Preparing...</p>
+          </div>
         </div>
-        <p class="progress-text" id="progress-text">Preparing...</p>
       </div>
+    </div>
 
-      <div id="whatsapp-sharing-section" style="display:none; margin-top:30px; text-align:left; background:var(--bg-card); padding:20px; border-radius:8px; border:1px solid var(--border-color);">
-        <div class="flex justify-between items-center mb-md">
-          <h3 style="margin:0; font-size: 1.1rem; display:flex; align-items:center; gap:8px;"><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> WhatsApp Sharing Hub</h3>
+    <div id="whatsapp-sharing-section" class="mt-2xl" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon green"><i class="fa-brands fa-whatsapp"></i></div>
+          <span class="card-title">WhatsApp Sharing Hub</span>
+          <div style="flex:1"></div>
           <div id="wa-batch-status-inline"></div>
         </div>
-        <p class="text-muted" style="font-size:0.85rem; margin-bottom:15px;">Extract your downloaded ZIP file, then click these buttons to easily open a WhatsApp chat for each guest.</p>
-        <div id="whatsapp-links-container" style="max-height:300px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-sidebar);"></div>
+        <p class="text-muted mb-lg" style="font-size:0.9rem;">Your PDFs are ready. You can now reach out to your guests individually via WhatsApp.</p>
+        <div id="whatsapp-links-container" class="wa-grid"></div>
       </div>
     </div>
   `;

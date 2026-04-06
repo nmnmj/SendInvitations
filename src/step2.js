@@ -40,7 +40,8 @@ export function renderStep2() {
     return `
       <div class="empty-state">
         <div class="empty-state-icon"><i class="fa-solid fa-image"></i></div>
-        <p class="empty-state-text">Please upload images in Step 1 first</p>
+        <p class="empty-state-text">No images uploaded yet</p>
+        <p class="text-muted" style="font-size:0.85rem; margin-top: 4px;">Go back to Step 1 to upload your invitation card images first.</p>
       </div>
     `;
   }
@@ -51,11 +52,6 @@ export function renderStep2() {
   const availableFromCSV = csvHeaders.filter((h) => !existingKeys.includes(h));
 
   return `
-    <div class="section-header">
-      <h1 class="section-title">Personalize Your Invitations</h1>
-      <p class="section-subtitle">Add dynamic placeholders and position them on your pages. Each placeholder maps to a CSV column.</p>
-    </div>
-
     <!-- CSV columns quick-add -->
     ${
       csvHeaders.length > 0
@@ -91,13 +87,13 @@ export function renderStep2() {
     </div>
     `
         : `
-    <div class="card mb-lg" style="border-color:rgba(245,158,11,0.3);">
+    <div class="card mb-lg" style="border-color:rgba(59,130,246,0.2);">
       <div class="card-header">
-        <div class="card-header-icon orange"><i class="fa-solid fa-circle-info"></i></div>
-        <span class="card-title">No CSV Uploaded Yet</span>
+        <div class="card-header-icon blue"><i class="fa-solid fa-circle-info"></i></div>
+        <span class="card-title">Tip: Link with Guest Data</span>
       </div>
       <p class="text-muted" style="font-size:0.85rem;">
-        Upload a CSV in Step 3 to auto-detect column variables, or manually add placeholders below.
+        Upload a CSV in Step 3 and column names will appear here as one-click variables. You can also add placeholders manually below.
       </p>
     </div>
     `
@@ -119,7 +115,7 @@ export function renderStep2() {
     <div class="placeholder-list" id="placeholder-list"></div>
 
     <!-- Preview -->
-    <div class="preview-container mt-xl" id="preview-section" style="${state.placeholders.length ? "" : "display:none"}">
+    <div class="preview-container mt-xl" id="preview-section">
       <div class="preview-canvas-wrap">
         <div class="preview-toolbar">
           <span style="font-weight:600;font-size:0.9rem;"><i class="fa-solid fa-eye" style="margin-right:6px;"></i>Live Preview</span>
@@ -148,6 +144,7 @@ export function renderStep2() {
         </div>
       </div>
     </div>
+
   `;
 }
 
@@ -231,7 +228,6 @@ function addPlaceholder(rawKey) {
   const input = document.getElementById("new-placeholder-key");
   if (input) input.value = "";
   renderPlaceholderList();
-  document.getElementById("preview-section").style.display = "";
   showToast(`Placeholder "{{${key}}}" added`, "success");
   drawPreview();
   notify();
@@ -342,9 +338,6 @@ function renderPlaceholderList() {
       );
       renderPlaceholderList();
       drawPreview();
-      if (state.placeholders.length === 0) {
-        document.getElementById("preview-section").style.display = "none";
-      }
       showToast("Placeholder removed", "info");
       notify();
     });
