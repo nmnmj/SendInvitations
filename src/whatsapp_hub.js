@@ -101,109 +101,141 @@ function renderModalContent() {
   const s = state.whatsappStatus;
   const qr = state.whatsappQR;
 
-  modal.innerHTML = `
-    <div class="wa-modal">
-      <div class="wa-modal-header">
-        <div class="flex items-center gap-md">
-          <i class="fa-brands fa-whatsapp" style="font-size:1.5rem; color:#25D366;"></i>
-          <h2 style="font-size:1.1rem; margin:0;">WhatsApp Automation Center</h2>
+  // 1. Create Shell if not exists
+  if (!modal.querySelector(".wa-modal")) {
+    modal.innerHTML = `
+      <div class="wa-modal">
+        <div class="wa-modal-header">
+          <div class="flex items-center gap-md">
+            <i class="fa-brands fa-whatsapp" style="font-size:1.5rem; color:#25D366;"></i>
+            <h2 style="font-size:1.1rem; margin:0;">WhatsApp Automation Center</h2>
+          </div>
+          <button class="btn btn-sm btn-secondary" id="wa-modal-close"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <button class="btn btn-sm btn-secondary" id="wa-modal-close"><i class="fa-solid fa-xmark"></i></button>
+        <div class="wa-modal-body" id="wa-modal-body-content"></div>
       </div>
-      <div class="wa-modal-body">
-        ${
-          s === "ready"
-            ? `
-          <div style="color:#25D366; font-size:3rem; margin-bottom:1rem;"><i class="fa-solid fa-circle-check"></i></div>
-          <h3 style="margin-bottom:0.5rem;">Device Linked!</h3>
-          <p class="text-muted">Your private WhatsApp bridge is active. You can now send invitations automatically from the guest list.</p>
-          <button class="btn btn-danger btn-sm mt-lg" id="wa-logout-btn">Disconnect Device</button>
-        `
-            : s === "qr" || s === "initializing"
-              ? `
-          <div class="wa-qr-container">
-            ${
-              qr
-                ? `<img src="${qr}" alt="WhatsApp QR Code" />`
-                : `
-              <div class="wa-qr-loading">
-                <i class="fa-solid fa-spinner animate-spin" style="font-size:2.5rem; color:#25D366;"></i>
-                <span style="font-weight:600; margin-top:1rem;">Starting Engine...</span>
-              </div>`
-            }
-          </div>
-          
-          <div id="wa-pairing-section">
-             ${
-               state.whatsappPairingCode
-                 ? `
-               <div style="padding: 1.5rem; background: var(--bg-highlight); border: 2px dashed #25D366; border-radius: 12px; margin: 1rem 0;">
-                  <p style="font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 600; color: #25D366;">YOUR PAIRING CODE:</p>
-                  <div style="font-size: 2.2rem; font-family: monospace; letter-spacing: 4px; font-weight: 800; color: var(--text-primary);">${state.whatsappPairingCode}</div>
-                  <p style="font-size: 0.75rem; margin-top: 1rem; color: var(--text-muted);">Open WhatsApp -> Linked Devices -> Link with Phone Number and enter this code.</p>
-               </div>
-               <button class="btn btn-sm btn-outline mt-sm" onclick="this.parentElement.innerHTML = document.getElementById('pairing-input-tpl').innerHTML">Back to QR</button>
-             `
-                 : `
-               <div id="pairing-input-tpl" style="display:none;">
-                   <h3 style="margin-top: 1.2rem; margin-bottom:0.6rem; font-weight:700; font-size:1.1rem; color:var(--text-primary);">Link with Phone Number</h3>
-                   <p class="text-muted" style="font-size:0.85rem; line-height:1.4; margin-bottom:1rem;">If scanning isn't possible, use your number to receive a pairing code.</p>
-                   
-                   <div style="border-top: 1px solid rgba(108, 99, 255, 0.15); margin: 1.5rem 0; position: relative;">
-                     <span style="position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--bg-card); padding: 2px 12px; font-size: 0.65rem; color: var(--accent-primary-light); font-weight: 800; letter-spacing:1.5px; white-space:nowrap; border: 1px solid rgba(108,99,255,0.2); border-radius:10px;">OR USE PHONE LINK</span>
-                   </div>
+    `;
+    document
+      .getElementById("wa-modal-close")
+      ?.addEventListener("click", closeModal);
+  }
 
-                   <div class="flex gap-sm" style="margin-top:0.5rem; display:flex; gap:8px;">
-                     <input type="text" id="wa-phone-input" placeholder="e.g. 917012345678" class="form-input" style="flex:1; background:var(--bg-primary); border-color:rgba(108,99,255,0.3); font-weight:600; color:var(--text-primary); border-radius:10px; padding: 12px;">
-                     <button class="btn" id="wa-get-pairing-btn" style="background:#25D366; color:white; border:none; padding: 0 20px; border-radius:10px; font-weight:700; white-space:nowrap; box-shadow:0 4px 12px rgba(37,211,102,0.3); cursor:pointer;">Get Code</button>
-                   </div>
-                   <p class="text-muted mt-sm" style="font-size:0.75rem; opacity:0.8; margin-top:10px;">Include country code but NO plus sign (+) or spaces.</p>
-               </div>
-               <div id="pairing-input-container"></div>
-             `
-             }
-          </div>
-        `
-              : `
-          <div class="wa-qr-container">
+  const body = document.getElementById("wa-modal-body-content");
+  if (!body) return;
+
+  // 2. Persistent View State (to avoid wiping inputs)
+  const currentStatus = body.getAttribute("data-status");
+
+  // If status changed or it's the first render
+  if (currentStatus !== s) {
+    body.setAttribute("data-status", s);
+
+    if (s === "ready") {
+      body.innerHTML = `
+        <div style="color:#25D366; font-size:3rem; margin-bottom:1rem;"><i class="fa-solid fa-circle-check"></i></div>
+        <h3 style="margin-bottom:0.5rem;">Device Linked!</h3>
+        <p class="text-muted">Your private WhatsApp bridge is active. You can now send invitations directly.</p>
+        <button class="btn btn-danger btn-sm mt-lg" id="wa-logout-btn">Disconnect Device</button>
+      `;
+      document
+        .getElementById("wa-logout-btn")
+        ?.addEventListener("click", handleLogout);
+    } else if (s === "qr" || s === "initializing") {
+      body.innerHTML = `
+        <div class="wa-qr-container" id="wa-qr-img-container">
+           <div class="wa-qr-loading">
+              <i class="fa-solid fa-spinner animate-spin" style="font-size:2.5rem; color:#25D366;"></i>
+              <span style="font-weight:600; margin-top:1rem;">Starting Engine...</span>
+           </div>
+        </div>
+        <div id="wa-pairing-ui-root"></div>
+      `;
+      updatePairingUI();
+    } else {
+      body.innerHTML = `
+         <div class="wa-qr-container">
             <div class="wa-qr-loading">
               <i class="fa-solid fa-spinner animate-spin" style="font-size:2.5rem; color:#25D366;"></i>
               <span style="font-weight:600; margin-top:1rem;">Connecting...</span>
             </div>
           </div>
           <p class="text-muted">Wait a moment while we update the session status...</p>
-        `
-        }
-      </div>
-    </div>
-  `;
-
-  // Attach dynamic logic for pairing code input container if it exists
-  const pairingContainer = document.getElementById("pairing-input-container");
-  if (pairingContainer && !pairingContainer.innerHTML.trim()) {
-    pairingContainer.innerHTML =
-      document.getElementById("pairing-input-tpl").innerHTML;
-
-    const phoneInput = document.getElementById("wa-phone-input");
-    if (phoneInput) {
-      phoneInput.addEventListener("input", (e) => {
-        state.whatsappPhone = e.target.value;
-      });
-      // Ensure the value is set correctly from state
-      phoneInput.value = state.whatsappPhone || "";
+      `;
     }
-
-    document
-      .getElementById("wa-get-pairing-btn")
-      ?.addEventListener("click", handleGetPairingCode);
   }
 
-  document
-    .getElementById("wa-modal-close")
-    ?.addEventListener("click", closeModal);
-  document
-    .getElementById("wa-logout-btn")
-    ?.addEventListener("click", handleLogout);
+  // 3. Granular Updates within Status
+  if (s === "qr" || s === "initializing") {
+    // Update QR Image ONLY
+    const qrCont = document.getElementById("wa-qr-img-container");
+    if (qrCont && qr) {
+      if (
+        !qrCont.querySelector("img") ||
+        qrCont.querySelector("img").src !== qr
+      ) {
+        qrCont.innerHTML = `<img src="${qr}" alt="WhatsApp QR Code" />`;
+      }
+    }
+
+    // Update Pairing Code Section ONLY if it changed
+    updatePairingUI();
+  }
+}
+
+function updatePairingUI() {
+  const root = document.getElementById("wa-pairing-ui-root");
+  if (!root) return;
+
+  const code = state.whatsappPairingCode;
+  const currentView = root.getAttribute("data-view");
+  const targetView = code ? "code" : "input";
+
+  if (currentView !== targetView) {
+    root.setAttribute("data-view", targetView);
+    if (targetView === "code") {
+      root.innerHTML = `
+        <div style="padding: 1.5rem; background: var(--bg-highlight); border: 2px dashed #25D366; border-radius: 12px; margin: 1rem 0;">
+          <p style="font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 600; color: #25D366;">YOUR PAIRING CODE:</p>
+          <div style="font-size: 2.2rem; font-family: monospace; letter-spacing: 4px; font-weight: 800; color: var(--text-primary);">${code}</div>
+          <p style="font-size: 0.75rem; margin-top: 1rem; color: var(--text-muted);">Open WhatsApp -> Linked Devices -> Link with Phone Number.</p>
+        </div>
+        <button class="btn btn-sm btn-outline mt-sm" id="wa-back-to-qr">Back to QR</button>
+      `;
+      document
+        .getElementById("wa-back-to-qr")
+        ?.addEventListener("click", () => {
+          state.whatsappPairingCode = null;
+          updatePairingUI();
+        });
+    } else {
+      root.innerHTML = `
+        <div style="margin-top: 1.2rem; text-align: left;">
+          <h3 style="margin-bottom:0.6rem; font-weight:700; font-size:1.1rem; color:var(--text-primary);">Link with Phone Number</h3>
+          <p class="text-muted" style="font-size:0.85rem; line-height:1.4; margin-bottom:1rem;">If scanning isn't possible, use your number to receive a pairing code.</p>
+          
+          <div style="border-top: 1px solid rgba(108, 99, 255, 0.15); margin: 1.5rem 0; position: relative;">
+            <span style="position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--bg-card); padding: 2px 12px; font-size: 0.65rem; color: var(--accent-primary-light); font-weight: 800; letter-spacing:1.5px; white-space:nowrap; border: 1px solid rgba(108,99,255,0.2); border-radius:10px;">OR USE PHONE LINK</span>
+          </div>
+
+          <div class="flex gap-sm" style="margin-top:0.5rem; display:flex; gap:8px;">
+            <input type="text" id="wa-phone-input" placeholder="e.g. 917012345678" class="form-input" style="flex:1; background:var(--bg-primary); border-color:rgba(108,99,255,0.3); font-weight:600; color:var(--text-primary); border-radius:10px; padding: 12px;">
+            <button class="btn" id="wa-get-pairing-btn" style="background:#25D366; color:white; border:none; padding: 0 20px; border-radius:10px; font-weight:700; white-space:nowrap; box-shadow:0 4px 12px rgba(37,211,102,0.3); cursor:pointer;">Get Code</button>
+          </div>
+          <p class="text-muted mt-sm" style="font-size:0.75rem; opacity:0.8; margin-top:10px;">Include country code but NO plus sign (+) or spaces.</p>
+        </div>
+      `;
+      const input = document.getElementById("wa-phone-input");
+      if (input) {
+        input.value = state.whatsappPhone || "";
+        input.addEventListener("input", (e) => {
+          state.whatsappPhone = e.target.value;
+        });
+      }
+      document
+        .getElementById("wa-get-pairing-btn")
+        ?.addEventListener("click", handleGetPairingCode);
+    }
+  }
 }
 
 async function handleGetPairingCode() {

@@ -1,0 +1,10 @@
+{
+  "ignore": [
+    ".baileys_auth/**",
+    "public/**",
+    "src/**",
+    "*.csv",
+    "*.pdf"
+  ],
+  "ext": "js,json"
+}

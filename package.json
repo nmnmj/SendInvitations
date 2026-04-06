@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "nodemon whatsapp_server.js",
     "build": "vite build",
     "build:all": "npm run build",
     "preview": "vite preview",
-    "start": "node whatsapp_server.js"
+    "start": "nodemon whatsapp_server.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.14",
