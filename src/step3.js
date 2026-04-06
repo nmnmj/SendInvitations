@@ -746,10 +746,12 @@ export function renderTable() {
       if (state.whatsappStatus !== "ready") {
         import("./toast.js").then(({ showToast }) =>
           showToast(
-            "Please connect your WhatsApp device in the header first before sending.",
+            "Please connect your WhatsApp device first to send.",
             "warning",
           ),
         );
+        const waHubBtn = document.getElementById("wa-hub-open");
+        if (waHubBtn) waHubBtn.click();
         return;
       }
 
@@ -855,10 +857,12 @@ async function sendAllToWhatsApp() {
   if (state.whatsappStatus !== "ready") {
     import("./toast.js").then(({ showToast }) =>
       showToast(
-        "Please connect your WhatsApp device in the header first before bulk sending.",
+        "Please connect your WhatsApp device first to bulk send.",
         "warning",
       ),
     );
+    const waHubBtn = document.getElementById("wa-hub-open");
+    if (waHubBtn) waHubBtn.click();
     return;
   }
 
