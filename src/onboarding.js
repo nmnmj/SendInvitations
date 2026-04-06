@@ -18,30 +18,30 @@ const ONBOARDING_DATA = [
     `,
   },
   {
-    title: "Personalize Design",
-    subtitle: "Step 2: Dynamic Overlays",
-    icon: "fa-wand-magic-sparkles",
-    illustration: "fa-pen-nib",
+    title: "Guest List",
+    subtitle: "Step 2: Data & Intelligence",
+    icon: "fa-address-book",
+    illustration: "fa-table-list",
     content: `
-      <p>Add placeholders like <code>{{Name}}</code> or <code>{{Table}}</code>. These are <b>interlinked</b> with your CSV list.</p>
+      <p>Import your guests. Upload a CSV or add them manually. All columns are automatically detected as variables.</p>
       <ul>
-        <li><i class="fa-solid fa-link"></i> <strong>Sync with CSV</strong>: Any field added in Step 3 automatically becomes a variable here.</li>
-        <li><i class="fa-solid fa-font"></i> <strong>Creative Style</strong>: Custom fonts, multi-line support, and vibrant colors.</li>
-        <li><i class="fa-solid fa-expand"></i> <strong>Precise Placement</strong>: Position text overlays perfectly on your template.</li>
+        <li><i class="fa-solid fa-bolt"></i> <strong>Variable Detection</strong>: Column headers become tags like {{Name}}.</li>
+        <li><i class="fa-solid fa-language"></i> <strong>Hindi Mode</strong>: English typing converts to Hindi automatically.</li>
+        <li><i class="fa-solid fa-table"></i> <strong>Live Table</strong>: Edit guest details directly in the dashboard.</li>
       </ul>
     `,
   },
   {
-    title: "Manage Guest List",
-    subtitle: "Step 3: Intelligence & Data",
-    icon: "fa-address-book",
-    illustration: "fa-table-list",
+    title: "Personalize Design",
+    subtitle: "Step 3: Creative Control",
+    icon: "fa-wand-magic-sparkles",
+    illustration: "fa-pen-nib",
     content: `
-      <p>Organize your guests. Any column header added here becomes a <b>dynamic variable</b> in Step 2.</p>
+      <p>Place dynamic text on your card. Variables from Step 2 appear at the top for one-click placement.</p>
       <ul>
-        <li><i class="fa-solid fa-language"></i> <strong>Hindi Mode</strong>: Auto-convert English typing to Hindi.</li>
-        <li><i class="fa-brands fa-whatsapp"></i> <strong>WhatsApp Suite</strong>: Send individual invites or use <b>Bulk Send</b> for all guests.</li>
-        <li><i class="fa-solid fa-link"></i> <strong>Step 2 Link</strong>: Columns added here automatically sync as placeholders.</li>
+        <li><i class="fa-solid fa-link"></i> <strong>Variable Sync</strong>: Click any detected column tag at the top to add it to your design.</li>
+        <li><i class="fa-solid fa-arrows-up-down-left-right"></i> <strong>Visual Canvas</strong>: Drag, style, and resize text overlays directly on the card.</li>
+        <li><i class="fa-brands fa-whatsapp"></i> <strong>WhatsApp Suite</strong>: Manage bulk sending and templates at the bottom.</li>
       </ul>
     `,
   },
@@ -51,11 +51,11 @@ const ONBOARDING_DATA = [
     icon: "fa-paper-plane",
     illustration: "fa-whatsapp",
     content: `
-      <p>Generate high-quality PDFs for all guests or send them directly via WhatsApp with a single click.</p>
+      <p>The final stage! Generate high-quality personalized PDFs or trigger bulk WhatsApp messages.</p>
       <ul>
-        <li><i class="fa-solid fa-check"></i> Single PDF or Zip download</li>
-        <li><i class="fa-solid fa-check"></i> Bulk WhatsApp messaging</li>
-        <li><i class="fa-solid fa-check"></i> Real-time status tracking</li>
+        <li><i class="fa-solid fa-file-pdf"></i> Single PDF or Zip download options</li>
+        <li><i class="fa-brands fa-whatsapp"></i> Direct WhatsApp invitation delivery</li>
+        <li><i class="fa-solid fa-magnifying-glass"></i> Real-time generation preview</li>
       </ul>
     `,
   },
@@ -108,7 +108,7 @@ export function showOnboarding() {
             <div class="onboarding-footer-left">
               <label class="dont-show-container">
                 <input type="checkbox" id="dont-show-again">
-                Don't show this again
+                <span>Don't show this again</span>
               </label>
             </div>
             <div class="onboarding-footer-right">

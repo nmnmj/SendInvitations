@@ -2,8 +2,10 @@
  * Step 2: Dynamic Personalization — Placeholders & Text Overlays
  * Interlinked with CSV: shows detected CSV columns as available variables.
  */
+import Papa from "papaparse";
 import { state, notify } from "./state.js";
 import { showToast } from "./toast.js";
+import { showConfirm, showPrompt } from "./modal.js";
 
 const FONT_OPTIONS = [
   "Inter",
@@ -52,7 +54,7 @@ export function renderStep2() {
   const availableFromCSV = csvHeaders.filter((h) => !existingKeys.includes(h));
 
   return `
-    <!-- CSV columns quick-add -->
+    <!-- 1. CSV Variables (Highest Priority) -->
     ${
       csvHeaders.length > 0
         ? `
@@ -62,7 +64,7 @@ export function renderStep2() {
         <span class="card-title">CSV Variables Available</span>
       </div>
       <p class="text-muted mb-md" style="font-size:0.85rem;">
-        Columns from your uploaded CSV. Click to add as a placeholder:
+        Click to add CSV column as a text placeholder on your card:
       </p>
       <div class="flex gap-sm flex-wrap" id="csv-vars-area">
         ${csvHeaders
@@ -93,14 +95,14 @@ export function renderStep2() {
         <span class="card-title">Tip: Link with Guest Data</span>
       </div>
       <p class="text-muted" style="font-size:0.85rem;">
-        Upload a CSV in Step 3 and column names will appear here as one-click variables. You can also add placeholders manually below.
+        Upload a CSV in Step 2 and column names will appear here as one-click variables.
       </p>
     </div>
     `
     }
 
-    <!-- Manual add placeholder -->
-    <div class="card mb-lg">
+    <!-- 2. Manual Personalization Tools -->
+    <div class="card mb-md">
       <div class="card-header">
         <div class="card-header-icon purple"><i class="fa-solid fa-plus"></i></div>
         <span class="card-title">Add Custom Placeholder</span>
@@ -111,10 +113,9 @@ export function renderStep2() {
       </div>
     </div>
 
-    <!-- Placeholder list -->
     <div class="placeholder-list" id="placeholder-list"></div>
 
-    <!-- Preview -->
+    <!-- 3. Preview Section (Centerpiece) -->
     <div class="preview-container mt-xl" id="preview-section">
       <div class="preview-canvas-wrap">
         <div class="preview-toolbar">
@@ -139,12 +140,107 @@ export function renderStep2() {
             <div class="card-header-icon green"><i class="fa-solid fa-layer-group"></i></div>
             <span class="card-title">Page Overlays</span>
           </div>
-          <p class="text-muted" style="font-size:0.8rem;">Placeholders on current page:</p>
-          <div id="page-overlay-list" class="mt-md"></div>
+          <div id="layer-list" class="layer-list"></div>
         </div>
       </div>
     </div>
 
+    <div style="margin-top: 40px; border-top: 2px dashed var(--border-color); padding-top: 30px;">
+       <div class="flex items-center gap-sm mb-lg">
+         <i class="fa-solid fa-database" style="color:var(--accent-primary);"></i>
+         <h3 style="margin:0; font-size:1.1rem; font-weight:600;">Data & WhatsApp Suite</h3>
+       </div>
+
+       <!-- 1. Stats -->
+       <div class="csv-stats" id="csv-stats" style="${state.csvData.rows.length > 0 ? "" : "display:none;"}">
+         <div class="stat-card">
+           <div class="stat-value purple" id="stat-total">${state.csvData.rows.length}</div>
+           <div class="stat-label">Total Guests</div>
+         </div>
+         <div class="stat-card">
+           <div class="stat-value green" id="stat-valid">${state.csvData.rows.length}</div>
+           <div class="stat-label">Valid Entries</div>
+         </div>
+         <div class="stat-card">
+           <div class="stat-value purple" id="stat-columns">${csvHeaders.length}</div>
+           <div class="stat-label">Columns</div>
+         </div>
+         <div class="stat-card">
+           <div class="stat-value orange" id="stat-blanks">${state.csvData.blankCount || 0}</div>
+           <div class="stat-label">Blank Fields</div>
+         </div>
+       </div>
+
+       <!-- 2. WhatsApp Suite (Now Above Actions/Table) -->
+       ${
+         csvHeaders.length > 0
+           ? `
+         <div class="p-md mb-lg" id="whatsapp-suite-card" style="background:rgba(37,211,102,0.05); border:1px solid rgba(37,211,102,0.2); border-radius:var(--radius-md); border-top: 4px solid #25D366;">
+           <div class="flex items-center gap-sm mb-sm">
+             <i class="fa-brands fa-whatsapp" style="color:#25D366; font-size:1.1rem;"></i>
+             <span style="font-weight:600; font-size:0.9rem;">Bulk WhatsApp Sending</span>
+           </div>
+           
+           <div class="flex gap-md flex-wrap">
+             <div style="flex: 1; min-width: 250px;">
+               <p class="text-muted mb-xs" style="font-size:0.8rem;"><strong>1. Select Phone Column</strong></p>
+               <select class="form-select" id="phone-column-dropdown" style="border-color:rgba(37,211,102,0.3); background:var(--bg-card); font-size: 0.85rem;">
+                 <option value="">-- Choose Column --</option>
+                 ${csvHeaders.map((h) => `<option value="${h}" ${h === state.csvData.phoneHeader ? "selected" : ""}>${h}</option>`).join("")}
+               </select>
+             </div>
+             
+             <div style="flex: 2; min-width: 300px;">
+               <p class="text-muted mb-xs" style="font-size:0.8rem;"><strong>2. Customize WhatsApp Message</strong></p>
+               <textarea class="form-input" id="whatsapp-message-template" rows="2" style="font-size: 0.85rem; border-color:rgba(37,211,102,0.3); background:var(--bg-card); resize: vertical;" placeholder="e.g. Hello {{Name}}, check out your invite!"></textarea>
+               <div id="variable-shortcuts" class="flex gap-xs flex-wrap mt-xs">
+                 ${csvHeaders.map((h) => `<button class="btn btn-sm btn-outline wa-var-btn" data-col="${h}" style="font-size:0.65rem; padding: 2px 6px; border-color:rgba(108, 99, 255, 0.2); color:var(--text-muted);">+ {{${h}}}</button>`).join("")}
+               </div>
+             </div>
+           </div>
+           
+           <div class="flex items-center gap-sm mt-md pt-md" style="border-top:1px solid rgba(37,211,102,0.2);">
+             <div class="btn btn-accent" id="send-all-wa-btn" style="background:#25D366; color:white;" role="button" tabindex="-1"><i class="fa-brands fa-whatsapp"></i> Send All to WhatsApp</div>
+             <div id="wa-batch-status-inline" class="flex items-center gap-sm" style="font-size:0.75rem; color:var(--text-muted);"></div>
+           </div>
+         </div>
+         `
+           : `
+         <div class="card mb-lg" style="border-color:rgba(37,211,102,0.2);">
+            <div class="card-header">
+              <div class="card-header-icon green"><i class="fa-brands fa-whatsapp"></i></div>
+              <span class="card-title">WhatsApp Sending</span>
+            </div>
+            <p class="text-muted" style="font-size:0.85rem;">Upload a Guest List CSV in Step 2 to enable bulk WhatsApp sending and messaging templates.</p>
+         </div>
+         `
+       }
+
+       <!-- 3. Data Actions -->
+       <div class="flex gap-sm flex-wrap mt-lg mb-lg" id="csv-actions" style="${state.csvData.rows.length > 0 ? "" : "display:none;"}">
+         <div class="btn btn-outline" id="add-row-manual-btn" role="button" tabindex="-1"><i class="fa-solid fa-plus"></i> Add One Guest</div>
+         <div class="btn btn-success" id="download-csv-btn" role="button" tabindex="-1"><i class="fa-solid fa-download"></i> Download CSV</div>
+         <div class="flex items-center gap-sm px-md py-xs" style="background:var(--bg-input); border-radius:var(--radius-md); border:1px solid var(--border-color);">
+           <label class="flex items-center gap-xs cursor-pointer" style="font-size:0.85rem; user-select:none;">
+             <input type="checkbox" id="hindi-mode-toggle" tabindex="-1" style="width:16px; height:16px; accent-color:var(--accent-primary);" ${state.csvData.hindiMode ? "checked" : ""}>
+             <span>Hindi Input Mode</span>
+           </label>
+         </div>
+         <div class="btn btn-danger" id="clear-csv-btn" role="button" tabindex="-1"><i class="fa-solid fa-trash"></i> Clear Data</div>
+       </div>
+
+       <!-- 4. Mini Info Report -->
+       <div id="csv-info-report" class="mt-md"></div>
+
+       <!-- 5. Guest List Table -->
+       <div class="csv-table-wrap mb-xl" id="csv-table-wrap" style="${state.csvData.rows.length > 0 ? "" : "display:none;"} max-height: 400px; overflow-y: auto; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+         <table class="csv-table" id="csv-table">
+           <thead><tr id="csv-table-head"></tr></thead>
+           <tbody id="csv-table-body"></tbody>
+         </table>
+       </div>
+    </div>
+    </div>
   `;
 }
 
@@ -202,6 +298,77 @@ export function initStep2() {
 
   renderPlaceholderList();
   initPreview();
+
+  // WhatsApp Suite bindings
+  const msgTemplateInput = document.getElementById("whatsapp-message-template");
+  if (msgTemplateInput) {
+    msgTemplateInput.value = state.csvData.whatsappMessageTemplate || "";
+    msgTemplateInput.addEventListener("input", (e) => {
+      state.csvData.whatsappMessageTemplate = e.target.value;
+      notify();
+    });
+  }
+
+  document.querySelectorAll(".wa-var-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (msgTemplateInput) {
+        const h = btn.dataset.col;
+        const start = msgTemplateInput.selectionStart;
+        const end = msgTemplateInput.selectionEnd;
+        const text = msgTemplateInput.value;
+        msgTemplateInput.value =
+          text.substring(0, start) + `{{${h}}}` + text.substring(end);
+        state.csvData.whatsappMessageTemplate = msgTemplateInput.value;
+        msgTemplateInput.focus();
+        msgTemplateInput.setSelectionRange(
+          start + h.length + 4,
+          start + h.length + 4,
+        );
+        notify();
+      }
+    });
+  });
+
+  document
+    .getElementById("phone-column-dropdown")
+    ?.addEventListener("change", (e) => {
+      state.csvData.phoneHeader = e.target.value || null;
+      notify();
+      if (state.csvData.phoneHeader) {
+        showToast(
+          `Phone number column set to: ${state.csvData.phoneHeader}`,
+          "success",
+        );
+      }
+    });
+
+  document
+    .getElementById("send-all-wa-btn")
+    ?.addEventListener("click", sendAllToWhatsApp);
+
+  // Guest List Actions
+  document
+    .getElementById("add-row-manual-btn")
+    ?.addEventListener("click", () => {
+      addRow();
+      renderTable();
+      notify();
+    });
+  document
+    .getElementById("download-csv-btn")
+    ?.addEventListener("click", downloadCSV);
+  document.getElementById("clear-csv-btn")?.addEventListener("click", clearCSV);
+  document
+    .getElementById("hindi-mode-toggle")
+    ?.addEventListener("change", (e) => {
+      state.csvData.hindiMode = e.target.checked;
+      notify();
+    });
+
+  if (state.csvData.rows.length > 0) {
+    renderTable();
+    showInfoReport();
+  }
 }
 
 function addPlaceholder(rawKey) {
@@ -884,5 +1051,475 @@ function onCanvasMouseUp() {
     resizeTarget = null;
     if (canvas) canvas.style.cursor = "";
     notify();
+  }
+}
+
+export async function sendAllToWhatsApp() {
+  const { rows, headers } = state.csvData;
+  if (!rows.length) return;
+
+  const btn = document.getElementById("send-all-wa-btn");
+  if (!btn) return;
+  const originalHTML = btn.innerHTML;
+
+  const pendingRows = rows.filter((r) => !r.__sent__);
+  if (pendingRows.length === 0) {
+    import("./toast.js").then(({ showToast }) =>
+      showToast("All guests have already been sent invitations.", "info"),
+    );
+    return;
+  }
+
+  if (state.whatsappStatus !== "ready") {
+    import("./toast.js").then(({ showToast }) =>
+      showToast(
+        "Please connect your WhatsApp device first to bulk send.",
+        "warning",
+      ),
+    );
+    const waHubBtn = document.getElementById("wa-hub-open");
+    if (waHubBtn) waHubBtn.click();
+    return;
+  }
+
+  let warningPrefix = "";
+  if (state.placeholders.length === 0) {
+    warningPrefix =
+      "WARNING: You haven't setup any text placeholders. Your cards will be sent without names.\n\n";
+  }
+
+  const confirmed = await showConfirm(
+    `${warningPrefix}Are you sure you want to send ${pendingRows.length} invitations? \n\nPatience is key: A 3s delay will be added between each to prevent spam flags.`,
+    "Bulk Automation Start",
+    "success",
+  );
+  if (!confirmed) return;
+
+  btn.disabled = true;
+  btn.style.opacity = "0.7";
+
+  const { sendViaWhatsAppAutomation } = await import("./step4.js");
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+
+    if (row.__sent__) {
+      continue;
+    }
+
+    let phone = "";
+    if (state.csvData.phoneHeader) {
+      phone = (row[state.csvData.phoneHeader] || "").toString().trim();
+    } else {
+      for (const h of headers) {
+        const val = (row[h] || "").toString().trim();
+        if (val.replace(/[^0-9]/g, "").length >= 10) {
+          phone = val;
+          break;
+        }
+      }
+    }
+
+    phone = phone.replace(/[^0-9+]/g, "");
+    if (phone.length === 10 && !phone.startsWith("+")) {
+      phone = "91" + phone;
+    }
+
+    if (!phone || phone.length < 10) {
+      console.warn(`Row ${i + 1} has no phone number, skipping.`);
+      failCount++;
+      continue;
+    }
+
+    const name =
+      headers.length > 0 ? (row[headers[0]] || "").trim() : `Guest ${i + 1}`;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Sending ${successCount + failCount + 1}/${pendingRows.length} to ${name}...`;
+
+    try {
+      await sendViaWhatsAppAutomation(i, phone);
+      successCount++;
+
+      state.csvData.rows[i].__sent__ = true;
+      notify();
+    } catch (err) {
+      console.error(`Batch send failed for row ${i + 1}:`, err);
+      failCount++;
+      state.csvData.rows[i].__sent__ = false;
+      notify();
+    }
+
+    const hasMoreToSend = rows.slice(i + 1).some((r) => !r.__sent__);
+    if (hasMoreToSend) {
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+
+  btn.disabled = false;
+  btn.style.opacity = "1";
+  btn.innerHTML = `<i class="fa-solid fa-check-double"></i> Batch Complete!`;
+
+  import("./toast.js").then(({ showToast }) =>
+    showToast(
+      `Batch Done! ${successCount} sent, ${failCount} failed.`,
+      "success",
+    ),
+  );
+
+  setTimeout(() => {
+    btn.innerHTML = originalHTML;
+  }, 5000);
+}
+
+export function renderTable() {
+  const { headers, rows } = state.csvData;
+  const thead = document.getElementById("csv-table-head");
+  const tbody = document.getElementById("csv-table-body");
+  if (!thead || !tbody) return;
+
+  // Update stats
+  const totalEl = document.getElementById("stat-total");
+  if (totalEl) totalEl.textContent = rows.length;
+  const validEl = document.getElementById("stat-valid");
+  if (validEl) validEl.textContent = rows.length;
+  const columnsEl = document.getElementById("stat-columns");
+  if (columnsEl) columnsEl.textContent = headers.length;
+  const blanksEl = document.getElementById("stat-blanks");
+  if (blanksEl) blanksEl.textContent = state.csvData.blankCount || 0;
+
+  thead.innerHTML = `<th>#</th><th title="Manual Sent Status">Sent</th>${headers.map((h) => `<th>{{${h}}}</th>`).join("")}<th style="text-align:right;">Quick Share / Delete</th>`;
+
+  tbody.innerHTML = rows
+    .map((row, i) => {
+      const isSent = row.__sent__ === true;
+      let phoneTxt = "";
+
+      if (state.csvData.phoneHeader) {
+        phoneTxt = (row[state.csvData.phoneHeader] || "").toString().trim();
+      } else {
+        for (const h of headers) {
+          const val = (row[h] || "").toString().trim();
+          if (val.replace(/[^0-9]/g, "").length >= 10) {
+            phoneTxt = val;
+            break;
+          }
+        }
+      }
+
+      phoneTxt = phoneTxt.replace(/[^0-9+]/g, "");
+      if (phoneTxt.length === 10 && !phoneTxt.startsWith("+")) {
+        phoneTxt = "91" + phoneTxt;
+      }
+
+      const hasPhone = phoneTxt.length >= 10;
+
+      return `<tr class="${isSent ? "row-sent" : ""}">
+      <td>${i + 1}</td>
+      <td>
+        <input type="checkbox" class="row-sent-checkbox" data-index="${i}" ${isSent ? "checked" : ""}>
+      </td>
+      ${headers
+        .map((h) => {
+          const val = row[h] || "";
+          const isBlank = val.toString().trim() === "";
+          return `<td contenteditable="true" class="csv-cell" data-header="${h}" data-index="${i}" ${isBlank ? 'style="color:var(--text-muted);font-style:italic;"' : ""}>${isBlank ? "" : val}</td>`;
+        })
+        .join("")}
+      <td style="text-align:right;">
+         <div class="flex items-center justify-end gap-sm">
+           <button class="btn btn-sm wa-quick-send-btn hint-btn" data-index="${i}" data-phone="${phoneTxt}" style="${hasPhone ? "background:#25D366; color:white;" : "background:var(--bg-highlight); color:var(--text-muted);"}" ${!hasPhone ? 'title="No phone number detected"' : ""}>
+             <i class="fa-brands fa-whatsapp"></i> ${hasPhone ? "Send" : "Generate"}
+           </button>
+           <button class="btn btn-sm csv-delete-row-btn" data-index="${i}" style="background:transparent; border:none; color:var(--danger); padding:4px;" title="Delete Row">
+             <i class="fa-solid fa-trash"></i>
+           </button>
+         </div>
+      </td>
+    </tr>`;
+    })
+    .join("");
+
+  // Cell listeners
+  document.querySelectorAll(".csv-cell").forEach((cell) => {
+    cell.addEventListener("keydown", async (e) => {
+      if (!state.csvData.hindiMode) return;
+      cell._keyboardHandled = false;
+      const isSpace = e.key === " " || e.keyCode === 32;
+      const isEnter = e.key === "Enter" || e.keyCode === 13;
+      if (isSpace || isEnter) {
+        if (e.key !== "Unidentified" && e.keyCode !== 229) {
+          cell._keyboardHandled = true;
+          e.stopImmediatePropagation();
+          await handleTransliteration(e, isEnter ? "Enter" : "Space", cell);
+        }
+      }
+    });
+
+    cell.addEventListener("input", async (e) => {
+      if (!state.csvData.hindiMode) return;
+      const isSpace = e.data === " ";
+      const isEnter =
+        e.inputType === "insertParagraph" || e.inputType === "insertLineBreak";
+      if (isSpace || isEnter) {
+        if (cell._keyboardHandled) {
+          cell._keyboardHandled = false;
+          return;
+        }
+        e.stopImmediatePropagation();
+        await handleTransliteration(e, isEnter ? "Enter" : "Space", cell);
+      }
+    });
+
+    cell.addEventListener("blur", (e) => {
+      const idx = e.target.dataset.index;
+      const header = e.target.dataset.header;
+      const val = e.target.innerText.trim();
+      state.csvData.rows[idx][header] = val;
+      state.csvData.blankCount = calculateBlankCount();
+      const stBlanks = document.getElementById("stat-blanks");
+      if (stBlanks) stBlanks.textContent = state.csvData.blankCount;
+      notify();
+      if (val === "") {
+        e.target.style.color = "var(--text-muted)";
+        e.target.style.fontStyle = "italic";
+        e.target.innerText = "";
+      } else {
+        e.target.style.color = "";
+        e.target.style.fontStyle = "";
+      }
+      showInfoReport();
+    });
+  });
+
+  // Action listeners
+  document.querySelectorAll(".csv-delete-row-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.index);
+      state.csvData.rows.splice(idx, 1);
+      renderTable();
+      notify();
+    });
+  });
+
+  document.querySelectorAll(".row-sent-checkbox").forEach((cb) => {
+    cb.addEventListener("change", (e) => {
+      const idx = parseInt(e.target.dataset.index);
+      const row = state.csvData.rows[idx];
+      if (row) {
+        row.__sent__ = e.target.checked;
+        const tr = e.target.closest("tr");
+        if (tr) {
+          if (row.__sent__) tr.classList.add("row-sent");
+          else tr.classList.remove("row-sent");
+        }
+        notify();
+      }
+    });
+  });
+
+  document.querySelectorAll(".wa-quick-send-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const tempBtn = e.currentTarget;
+      const idx = parseInt(tempBtn.dataset.index);
+      const phone = tempBtn.dataset.phone;
+
+      if (!phone || phone.length < 10) {
+        showToast("No valid phone number for this row", "error");
+        return;
+      }
+
+      if (state.whatsappStatus !== "ready") {
+        showToast(
+          "Please connect your WhatsApp device first to send.",
+          "warning",
+        );
+        const waHubBtn = document.getElementById("wa-hub-open");
+        if (waHubBtn) waHubBtn.click();
+        return;
+      }
+
+      const originalHTML = tempBtn.innerHTML;
+      tempBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Sending...`;
+      tempBtn.style.pointerEvents = "none";
+      tempBtn.style.opacity = "0.7";
+
+      try {
+        const { sendViaWhatsAppAutomation } = await import("./step4.js");
+        await sendViaWhatsAppAutomation(idx, phone);
+
+        const row = state.csvData.rows[idx];
+        if (row) {
+          row.__sent__ = true;
+          const cb = document.querySelector(
+            `.row-sent-checkbox[data-index="${idx}"]`,
+          );
+          if (cb) cb.checked = true;
+          const tr = tempBtn.closest("tr");
+          if (tr) tr.classList.add("row-sent");
+          notify();
+        }
+
+        tempBtn.innerHTML = `<i class="fa-solid fa-check"></i> Sent`;
+        tempBtn.style.background = "#059669";
+        tempBtn.style.opacity = "1";
+
+        setTimeout(() => {
+          tempBtn.innerHTML = originalHTML;
+          tempBtn.style.background = "#25D366";
+          tempBtn.style.pointerEvents = "auto";
+        }, 3000);
+      } catch (err) {
+        tempBtn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Fail`;
+        tempBtn.style.background = "#dc2626";
+        tempBtn.style.pointerEvents = "auto";
+        tempBtn.style.opacity = "1";
+        console.error(err);
+      }
+    });
+  });
+}
+
+async function handleTransliteration(e, isManualKey, cell) {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  const node = range.startContainer;
+  const text = node.textContent || "";
+  const pos = range.startOffset;
+  const isInputInserted = e.type === "input";
+  const lookbackPos = isInputInserted ? pos - 1 : pos;
+  const textBefore = text.substring(0, lookbackPos);
+  const lastWordMatch = textBefore.match(/(\S+)$/);
+
+  if (lastWordMatch) {
+    if (e.type === "keydown") e.preventDefault();
+    const word = lastWordMatch[1];
+    const start = lastWordMatch.index;
+    try {
+      const hindiWord = await transliterateWord(word);
+      if (hindiWord === word) {
+        if (e.type === "keydown") {
+          const extra = isManualKey === "Enter" ? "\n" : " ";
+          const newText = text.substring(0, pos) + extra + text.substring(pos);
+          node.textContent = newText;
+          const newRange = document.createRange();
+          newRange.setStart(node, pos + 1);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+        return;
+      }
+      const extra = isManualKey === "Enter" ? "\n" : " ";
+      let newText = isInputInserted
+        ? text.substring(0, start) + hindiWord + text.substring(lookbackPos)
+        : text.substring(0, start) + hindiWord + extra + text.substring(pos);
+      node.textContent = newText;
+      const newRange = document.createRange();
+      const newPos =
+        start + hindiWord.length + (isInputInserted ? pos - lookbackPos : 1);
+      newRange.setStart(node, Math.min(newPos, node.textContent.length));
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+
+      const idx = cell.dataset.index;
+      const header = cell.dataset.header;
+      state.csvData.rows[idx][header] = node.textContent;
+      state.csvData.blankCount = calculateBlankCount();
+      const blanksEl = document.getElementById("stat-blanks");
+      if (blanksEl) blanksEl.textContent = state.csvData.blankCount;
+      notify();
+    } catch (err) {
+      console.error("Transliteration failed", err);
+    }
+  }
+}
+
+async function transliterateWord(word) {
+  if (!word || !/[a-zA-Z]/.test(word)) return word;
+  const url = `https://inputtools.google.com/request?itc=hi-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=test&text=${encodeURIComponent(word)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data[0] === "SUCCESS") return data[1][0][1][0];
+  return word;
+}
+
+function calculateBlankCount() {
+  const { headers, rows } = state.csvData;
+  let count = 0;
+  rows.forEach((row) => {
+    headers.forEach((h) => {
+      const val = row[h];
+      if (val === undefined || val === null || val.toString().trim() === "")
+        count++;
+    });
+  });
+  return count;
+}
+
+function addRow() {
+  const { headers } = state.csvData;
+  const newRow = { __sent__: false };
+  headers.forEach((h) => (newRow[h] = ""));
+  state.csvData.rows.push(newRow);
+  state.csvData.blankCount = calculateBlankCount();
+}
+
+function downloadCSV() {
+  const { headers, rows } = state.csvData;
+  if (rows.length === 0) return showToast("No data to download", "warning");
+  const csv = Papa.unparse({
+    fields: headers,
+    data: rows.map((r) => headers.map((h) => r[h] || "")),
+  });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "guest_list.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function clearCSV() {
+  const confirmed = await showConfirm(
+    "Permanently clear all guest data?",
+    "Clear Data",
+    "danger",
+  );
+  if (!confirmed) return;
+  state.csvData = { rows: [], headers: [], blankCount: 0 };
+  document.getElementById("csv-stats").style.display = "none";
+  document.getElementById("csv-actions").style.display = "none";
+  document.getElementById("csv-table-wrap").style.display = "none";
+  document.getElementById("csv-info-report").innerHTML = "";
+  notify();
+}
+
+function showInfoReport() {
+  const infoEl = document.getElementById("csv-info-report");
+  if (!infoEl) return;
+  const blk = state.csvData.blankCount || 0;
+  if (blk === 0 && state.csvData.rows.length > 0) {
+    infoEl.innerHTML = `
+      <div class="card" style="border-color:rgba(16,185,129,0.3);">
+        <div class="flex items-center gap-sm">
+          <i class="fa-solid fa-circle-check" style="color:var(--success);font-size:1.2rem;"></i>
+          <span style="color:var(--success);font-weight:600;">All fields filled! Ready to go.</span>
+        </div>
+      </div>`;
+  } else if (blk > 0) {
+    infoEl.innerHTML = `
+      <div class="card" style="border-color:rgba(245,158,11,0.3);">
+        <div class="flex items-center gap-sm">
+          <i class="fa-solid fa-circle-info" style="color:var(--warning);font-size:1.2rem;"></i>
+          <span style="font-weight:600;">${blk} blank fields detected.</span>
+        </div>
+      </div>`;
+  } else {
+    infoEl.innerHTML = "";
   }
 }

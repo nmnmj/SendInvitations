@@ -19,16 +19,16 @@ const STEPS = [
     init: initStep1,
   },
   {
-    label: "Personalize",
-    icon: "fa-wand-magic-sparkles",
-    render: renderStep2,
-    init: initStep2,
-  },
-  {
     label: "Guest List",
     icon: "fa-address-book",
     render: renderStep3,
     init: initStep3,
+  },
+  {
+    label: "Personalize",
+    icon: "fa-wand-magic-sparkles",
+    render: renderStep2,
+    init: initStep2,
   },
   {
     label: "Generate",
@@ -86,14 +86,14 @@ export class App {
         hint: "Drag & drop or browse — JPEG/PNG supported. You can reorder pages after uploading.",
       },
       {
-        icon: "fa-wand-magic-sparkles",
-        action: "Position text placeholders on your card",
-        hint: "Add fields like {{Name}} and drag them into place on the preview canvas.",
-      },
-      {
         icon: "fa-address-book",
         action: "Import or create your guest list",
         hint: "Upload a CSV file or manually add guests. Column names become placeholders.",
+      },
+      {
+        icon: "fa-wand-magic-sparkles",
+        action: "Position text placeholders on your card",
+        hint: "Add fields like {{Name}} and drag them into place on the preview canvas. Setup WhatsApp messages here.",
       },
       {
         icon: "fa-paper-plane",
@@ -117,8 +117,8 @@ export class App {
   render() {
     const step = state.currentStep;
 
-    const nextLabels = ["Personalize", "Guest List", "Generate", ""];
-    const prevLabels = ["", "Upload", "Personalize", "Guest List"];
+    const nextLabels = ["Guest List", "Personalize", "Generate", ""];
+    const prevLabels = ["", "Upload", "Guest List", "Personalize"];
 
     this.container.innerHTML = `
       <!-- Header -->
