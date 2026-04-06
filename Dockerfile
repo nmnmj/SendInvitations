@@ -1,5 +1,5 @@
-# Use a Node.js base with Chromium pre-installed to simplify Puppeteer setup on Render
-FROM ghcr.io/puppeteer/puppeteer:21.0.0
+# Use a Node.js 20+ base with Chromium pre-installed to satisfy Vite 8 requirements
+FROM ghcr.io/puppeteer/puppeteer:23.11.1
 
 # Set production environment and default port
 ENV NODE_ENV=production
