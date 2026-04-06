@@ -1,0 +1,10 @@
+node_modules
+.baileys_auth
+.wwebjs_auth
+.wwebjs_cache
+dist
+.git
+.env
+invitations
+invitations.zip
+*.log

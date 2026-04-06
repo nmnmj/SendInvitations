@@ -1,29 +1,31 @@
-# Use a Node.js 20+ base with Chromium pre-installed to satisfy Vite 8 requirements
-FROM ghcr.io/puppeteer/puppeteer:23.11.1
+# Use a standard, slim Node.js image to save massive amounts of RAM and disk space
+# since Baileys (our new engine) doesn't need a heavy browser/Chrome.
+FROM node:20-slim
 
-# Set default port
-ENV PORT=10000
-
-# Switch to root to manage file permissions for build
-USER root
+# Set working directory
 WORKDIR /app
+
+# Install basic system dependencies required by Node
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the application files
+# Copy all application source code
 COPY . .
 
 # Build the Vite frontend into the 'dist' folder
-# (whatsapp_server.js is configured to serve this folder automatically)
 RUN npm run build
 
-# Expose the internal port for Render to connect
+# Default Render port
+ENV PORT=10000
 EXPOSE 10000
 
-# Set production environment for runtime
+# Set production environment
 ENV NODE_ENV=production
 
-# Start the application using 'npm start' (node whatsapp_server.js)
-CMD ["npm", "run", "start"]
+# Start the application!
+CMD ["npm", "start"]

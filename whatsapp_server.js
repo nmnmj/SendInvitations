@@ -1,12 +1,17 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import pkg from "whatsapp-web.js";
-const { Client, LocalAuth, MessageMedia } = pkg;
+import makeWASocket, {
+  useMultiFileAuthState,
+  DisconnectReason,
+  Browsers,
+  fetchLatestBaileysVersion, // Fix for 405
+} from "@whiskeysockets/baileys";
 import QRCode from "qrcode";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import pino from "pino";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,90 +26,103 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
 }
 
-// Map of sessionId -> Client instance
+// Map of sessionId -> Socket instance
 const sessions = new Map();
 // Map of sessionId -> current UI status/QR data
 const sessionData = new Map();
 
+// Logger (silent to avoid cluttering Render logs)
+const logger = pino({ level: "silent" });
+
 /**
- * Initializes a new client or returns existing one for a sessionId
+ * Initializes a new Baileys client for a sessionId
  */
 async function getOrCreateClient(sessionId) {
   if (sessions.has(sessionId)) return sessions.get(sessionId);
 
-  console.log(`🚀 Initializing private WhatsApp engine for [${sessionId}]...`);
   console.log(
-    `💡 Note: Render Free Tier (512MB RAM) can typically only handle 1-2 concurrent users.`,
+    `🚀 Initializing LIGHTWEIGHT Baileys engine for [${sessionId}]...`,
   );
   console.log(
-    `Current Memory Usage: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
+    `💡 Memory Usage: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB (VS 500MB+ in Puppeteer)`,
   );
 
-  // Initialize data record
-  sessionData.set(sessionId, { status: "initializing", qr: null });
+  const authDir = path.join(__dirname, ".baileys_auth", sessionId);
+  if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
 
-  const client = new Client({
-    authStrategy: new LocalAuth({ clientId: `user-${sessionId}` }),
-    puppeteer: {
-      headless: true, // Headless:true is mandatory for multi-user servers
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-extensions",
-        "--disable-gpu", // Memory optimization
-        "--no-first-run",
-      ],
-      // Use system browser if available to save disk space
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
-    },
+  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+
+  // Fetch latest version to avoid 405 Connection Failure
+  const { version, isLatest } = await fetchLatestBaileysVersion().catch(() => ({
+    version: [2, 3000, 1017531287],
+    isLatest: false,
+  }));
+  console.log(
+    `📡 Using WhatsApp Web v${version.join(".")} (Latest: ${isLatest})`,
+  );
+
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    logger,
+    printQRInTerminal: false,
+    browser: Browsers.ubuntu("Chrome"),
+    connectTimeoutMs: 60000,
+    keepAliveIntervalMs: 30000,
   });
 
-  client.on("qr", async (qr) => {
-    console.log(`✨ QR Received for [${sessionId}]`);
-    try {
+  // Track status
+  sessionData.set(sessionId, { status: "initializing", qr: null });
+
+  sock.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
+      console.log(`✨ QR Received for [${sessionId}]`);
       const qrDataURL = await QRCode.toDataURL(qr, {
         margin: 2,
-        width: parseInt(process.env.QR_WIDTH) || 300,
-        color: {
-          dark: process.env.QR_COLOR_DARK || "#25D366",
-          light: process.env.QR_COLOR_LIGHT || "#ffffff",
-        },
+        width: 300,
+        color: { dark: "#25D366", light: "#ffffff" },
       });
       sessionData.set(sessionId, { status: "qr", qr: qrDataURL });
-    } catch (err) {
-      console.error("QR Generation Error:", err);
+    }
+
+    if (connection) {
+      console.log(`🔌 Connection Update [${sessionId}]: ${connection}`);
+    }
+
+    if (connection === "close") {
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+      console.warn(
+        `⚠️ Session [${sessionId}] closed. Reason: ${lastDisconnect?.error?.message || "Unknown"} (Code: ${statusCode}). Reconnect: ${shouldReconnect}`,
+      );
+
+      if (!shouldReconnect) {
+        sessionData.set(sessionId, { status: "disconnected", qr: null });
+        sessions.delete(sessionId);
+        // Cleanup auth folder
+        try {
+          fs.rmSync(authDir, { recursive: true, force: true });
+        } catch (e) {}
+      } else {
+        // Re-init socket with a delay to prevent spamming
+        setTimeout(() => {
+          sessions.delete(sessionId);
+          getOrCreateClient(sessionId);
+        }, 5000);
+      }
+    } else if (connection === "open") {
+      console.log(`✅ Session [${sessionId}] is online!`);
+      sessionData.set(sessionId, { status: "ready", qr: null });
     }
   });
 
-  client.on("ready", () => {
-    console.log(`✅ Session [${sessionId}] is online!`);
-    sessionData.set(sessionId, { status: "ready", qr: null });
-  });
+  sock.ev.on("creds.update", saveCreds);
 
-  client.on("authenticated", () => {
-    sessionData.set(sessionId, { status: "authenticated", qr: null });
-  });
-
-  client.on("auth_failure", () => {
-    console.error(`❌ Session [${sessionId}] auth failed.`);
-    sessionData.set(sessionId, { status: "failed", qr: null });
-    sessions.delete(sessionId);
-  });
-
-  client.on("disconnected", () => {
-    console.warn(`⚠️ Session [${sessionId}] disconnected.`);
-    sessionData.set(sessionId, { status: "disconnected", qr: null });
-    sessions.delete(sessionId);
-  });
-
-  sessions.set(sessionId, client);
-  client.initialize().catch((err) => {
-    console.error(`Init error for [${sessionId}]:`, err);
-    sessionData.set(sessionId, { status: "error", error: err.message });
-  });
-
-  return client;
+  sessions.set(sessionId, sock);
+  return sock;
 }
 
 // 1. Boot up a specific session
@@ -113,7 +131,10 @@ app.post("/api/whatsapp/init", async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });
 
   await getOrCreateClient(sessionId);
-  res.json({ success: true, status: sessionData.get(sessionId).status });
+  res.json({
+    success: true,
+    status: sessionData.get(sessionId)?.status || "initializing",
+  });
 });
 
 // 2. Clear/Logout a specific session
@@ -121,35 +142,47 @@ app.post("/api/whatsapp/logout", async (req, res) => {
   const { sessionId } = req.body;
   if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });
 
-  const client = sessions.get(sessionId);
-  if (client) {
+  const sock = sessions.get(sessionId);
+  if (sock) {
     try {
-      await client.logout();
-      await client.destroy();
+      await sock.logout();
     } catch (e) {}
     sessions.delete(sessionId);
     sessionData.delete(sessionId);
+    // Delete credentials folder
+    const authDir = path.join(__dirname, ".baileys_auth", sessionId);
+    if (fs.existsSync(authDir))
+      fs.rmSync(authDir, { recursive: true, force: true });
   }
   res.json({ success: true });
 });
 
 // 3. Poll for Status/QR
-app.get("/api/whatsapp/status", (req, res) => {
+app.get("/api/whatsapp/status", async (req, res) => {
   const { sessionId } = req.query;
-  const data = sessionData.get(sessionId) || { status: "not_started" };
-  res.json(data);
+  if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });
+
+  let data = sessionData.get(sessionId);
+
+  // Auto-init if it's not started yet (robust fallback)
+  if (!data) {
+    await getOrCreateClient(sessionId);
+    data = sessionData.get(sessionId);
+  }
+
+  res.json(data || { status: "not_started" });
 });
 
-// 4. Enhanced Multi-User Send PDF
+// 4. Send PDF using Baileys
 app.post("/api/send-pdf", async (req, res) => {
   const { sessionId, phone, pdfBase64, filename, name } = req.body;
 
   if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });
 
-  const client = sessions.get(sessionId);
+  const sock = sessions.get(sessionId);
   const data = sessionData.get(sessionId);
 
-  if (!client || !data || data.status !== "ready") {
+  if (!sock || !data || data.status !== "ready") {
     return res.status(401).json({
       success: false,
       error: "WhatsApp session not ready. Please scan the QR code first.",
@@ -159,12 +192,18 @@ app.post("/api/send-pdf", async (req, res) => {
   try {
     let chatId = phone.replace(/[^0-9]/g, "");
     if (chatId.length === 10) chatId = "91" + chatId;
-    if (!chatId.endsWith("@c.us")) chatId += "@c.us";
+    if (!chatId.endsWith("@s.whatsapp.net")) chatId += "@s.whatsapp.net";
 
-    console.log(`🚀 [${sessionId}] sending to ${chatId}...`);
+    console.log(`🚀 [${sessionId}] sending PDF to ${chatId}...`);
 
-    const media = new MessageMedia("application/pdf", pdfBase64, filename);
-    await client.sendMessage(chatId, media, {
+    // Remove base64 header if present
+    const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+    const buffer = Buffer.from(cleanBase64, "base64");
+
+    await sock.sendMessage(chatId, {
+      document: buffer,
+      fileName: filename || "Invitation.pdf",
+      mimetype: "application/pdf",
       caption: `Hello ${name || "Guest"}, here is your invitation!`,
     });
 
@@ -176,7 +215,7 @@ app.post("/api/send-pdf", async (req, res) => {
   }
 });
 
-// 5. Catch-all for SPA routing (MUST be after API routes)
+// 5. Catch-all for SPA routing
 app.get(/.*/, (req, res) => {
   const indexFile = path.join(__dirname, "dist", "index.html");
   if (fs.existsSync(indexFile)) {
@@ -188,9 +227,26 @@ app.get(/.*/, (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(
-    `\n🚀 Multi-User WhatsApp Gateway active on http://localhost:${PORT}`,
-  );
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("⚠️ Unhandled Rejection at:", promise, "reason:", reason);
 });
+
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err);
+});
+
+const PORT = process.env.PORT || 3001;
+const server = app
+  .listen(PORT, () => {
+    console.log(`\n🚀 Light-weight Baileys Gateway active on Port ${PORT}`);
+    console.log(`💡 Best for Render Free Tier (Memory: ~50MB)`);
+  })
+  .on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(
+        `❌ Port ${PORT} is busy. Make sure old server is stopped!`,
+      );
+    } else {
+      console.error("❌ Server startup error:", err);
+    }
+  });

@@ -375,9 +375,17 @@ async function sendAllToWhatsApp() {
   const btn = document.getElementById("send-all-wa-btn");
   const originalHTML = btn.innerHTML;
 
+  const pendingRows = rows.filter((r) => !r.__sent__);
+  if (pendingRows.length === 0) {
+    import("./toast.js").then(({ showToast }) =>
+      showToast("All guests have already been sent invitations.", "info"),
+    );
+    return;
+  }
+
   if (
     !confirm(
-      `Are you sure you want to send ${rows.length} invitations automatically? \n\nA small delay (3s) will be added between each send to prevent WhatsApp spam flags.`,
+      `Are you sure you want to send ${pendingRows.length} remaining invitations automatically? \n\nA small delay (3s) will be added between each send to prevent WhatsApp spam flags.`,
     )
   ) {
     return;
@@ -393,6 +401,10 @@ async function sendAllToWhatsApp() {
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
+
+    if (row.__sent__) {
+      continue;
+    }
 
     // Find phone number
     let phone = "";
@@ -412,7 +424,7 @@ async function sendAllToWhatsApp() {
 
     const name =
       headers.length > 0 ? (row[headers[0]] || "").trim() : `Guest ${i + 1}`;
-    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> (${i + 1}/${rows.length}) Sending to ${name}...`;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Sending ${successCount + failCount + 1}/${pendingRows.length} to ${name}...`;
 
     try {
       await sendViaWhatsAppAutomation(i, phone);
@@ -469,7 +481,9 @@ async function sendAllToWhatsApp() {
     }
 
     // Natural human delay between sends (3 seconds)
-    if (i < rows.length - 1) {
+    // Only delay if there are more pending rows to send
+    const hasMoreToSend = rows.slice(i + 1).some((r) => !r.__sent__);
+    if (hasMoreToSend) {
       await new Promise((r) => setTimeout(r, 3000));
     }
   }
@@ -480,7 +494,7 @@ async function sendAllToWhatsApp() {
 
   import("./toast.js").then(({ showToast }) =>
     showToast(
-      `Batch Done! ${successCount} sent, ${failCount} skipped/failed.`,
+      `Batch Done! ${successCount} sent, ${failCount} failed.`,
       "success",
     ),
   );
