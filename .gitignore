@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Environment variables
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,9 +31,29 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Data & Generated Files
 guest.csv
+sample_guests.csv
+invitations/
+invitations.zip
+*.pdf
 
 # WhatsApp Session Data
 .wwebjs_auth*
 .wwebjs_cache*
 .baileys_auth*
+.wwebjs_auth/
+.baileys_auth/
+
+# Temporary files
+tmp/
+temp/
+WhatsApp Unknown*
+.vite/
+.npm/
+.eslintcache
+coverage/
+*.bak
+*.tmp
+
