@@ -454,13 +454,13 @@ h6 {
 }
 
 .card-header-icon {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .card-header-icon.purple {
@@ -2649,21 +2649,275 @@ input[type="color"] {
   100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
 }
 
-/* Pulsing effect for the target element when guided */
-.guided-target {
-  position: relative;
+/* ============================================
+   App Footer
+   ============================================ */
+.app-footer {
+  margin-top: var(--space-3xl);
+  padding: var(--space-2xl) var(--space-xl);
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
 }
 
-.guided-target::after {
-  content: "";
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  text-align: center;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  opacity: 0.8;
+  filter: grayscale(0.5);
+  transition: var(--transition-normal);
+}
+
+.footer-logo:hover {
+  opacity: 1;
+  filter: grayscale(0);
+}
+
+.footer-links {
+  display: flex;
+  gap: var(--space-xl);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.footer-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.footer-link:hover {
+  color: var(--accent-primary-light);
+}
+
+.footer-credits {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.support-section {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(219, 39, 119, 0.05));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* ============================================
+   Donation / Support Modal Content
+   ============================================ */
+/* ============================================
+   Donation / Support Modal Content
+   ============================================ */
+.support-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xl);
+  padding: 0;
+}
+
+.support-qr-card {
+  background: white;
+  padding: 16px;
+  padding-bottom: 28px; /* Room for banner */
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform var(--transition-normal);
+}
+
+.support-qr-card:hover {
+  transform: translateY(-5px);
+}
+
+.qr-banner {
   position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border: 2px solid var(--accent-primary-light);
-  border-radius: inherit;
-  animation: indicatorPulse 2s infinite;
-  pointer-events: none;
-  z-index: 5;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #25d366;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 6px 0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.upi-id-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  background: rgba(18, 18, 31, 1);
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  width: 100%;
+  max-width: 340px;
+  justify-content: space-between;
+}
+
+.upi-id-text {
+  font-family: monospace;
+  font-size: 1rem;
+  color: #7c3aed; /* Purple as in screenshot */
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  transition: var(--transition-fast);
+  font-size: 1rem;
+}
+
+.copy-btn:hover {
+  color: var(--accent-primary-light);
+}
+
+.gpay-btn {
+  width: 100%;
+  max-width: 320px;
+  background: #4285F4 !important;
+  color: white !important;
+  font-weight: 700 !important;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+  font-size: 0.92rem !important;
+  letter-spacing: 0.02em;
+}
+
+.gpay-btn i {
+  font-size: 2rem;
+}
+
+.pay-accepted-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 5px;
+}
+
+.accepted-badge {
+  background: white;
+  color: #53575b;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.accepted-badge i {
+  color: #4285F4;
+  font-size: 1.2rem;
+}
+
+.alt-pay-icons {
+  display: flex;
+  gap: 20px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-size: 1rem;
+}
+
+@media (max-width: 600px) {
+  .support-modal-content {
+    gap: var(--space-md); /* Reduced gap from XL to MD for mobile */
+  }
+
+  .support-qr-card {
+    display: flex;
+    transform: scale(0.8); /* Further scale down for small mobile */
+    margin: -10px 0; /* Tighten vertical space */
+  }
+  
+  .modal {
+    padding: var(--space-lg);
+    width: 95%;
+    max-height: 90vh; /* Don't overflow the screen */
+    overflow-y: auto; /* Allow scrolling if content is too tall */
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px; /* Space for scrollbar if needed */
+  }
+
+  .upi-id-row {
+    padding: 8px 14px;
+    max-width: 100%;
+  }
+  
+  .upi-id-text {
+    font-size: 0.85rem;
+  }
+
+  .gpay-btn {
+    height: 44px; /* More compact for mobile */
+    font-size: 0.8rem !important;
+    max-width: 100%;
+  }
+
+  .pay-accepted-container {
+    gap: 8px;
+  }
+  
+  .alt-pay-icons {
+    gap: 15px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .support-modal-content {
+    gap: var(--space-sm);
+  }
+  
+  .upi-id-row {
+    flex-direction: column;
+    padding: 10px;
+    gap: 4px;
+  }
+  
+  .upi-id-text {
+    font-size: 0.8rem;
+  }
 }

@@ -40,7 +40,7 @@ export function showModal({
               : ""
           }
         </div>
-        <div class="flex justify-end gap-sm mt-lg">
+        <div class="flex justify-center gap-sm mt-lg">
           ${showCancel ? `<button class="btn btn-secondary" id="modal-cancel-btn">${cancelText}</button>` : ""}
           <button class="btn ${type === "danger" ? "btn-danger" : "btn-primary"}" id="modal-confirm-btn">${confirmText}</button>
         </div>
