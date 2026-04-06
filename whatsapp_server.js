@@ -175,7 +175,7 @@ app.get("/api/whatsapp/status", async (req, res) => {
 
 // 4. Send PDF using Baileys
 app.post("/api/send-pdf", async (req, res) => {
-  const { sessionId, phone, pdfBase64, filename, name } = req.body;
+  const { sessionId, phone, pdfBase64, filename, name, caption } = req.body;
 
   if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });
 
@@ -204,7 +204,7 @@ app.post("/api/send-pdf", async (req, res) => {
       document: buffer,
       fileName: filename || "Invitation.pdf",
       mimetype: "application/pdf",
-      caption: `Hello ${name || "Guest"}, here is your invitation!`,
+      caption: caption || `Hello ${name || "Guest"}, here is your invitation!`,
     });
 
     console.log(`✅ [${sessionId}] Sent successful!`);

@@ -49,12 +49,23 @@ export function renderStep3() {
       <div class="mt-lg p-md" style="background:rgba(37,211,102,0.05); border:1px solid rgba(37,211,102,0.2); border-radius:var(--radius-md);">
         <div class="flex items-center gap-sm mb-sm">
           <i class="fa-brands fa-whatsapp" style="color:#25D366; font-size:1.1rem;"></i>
-          <span style="font-weight:600; font-size:0.9rem;">Map Phone Number Column</span>
+          <span style="font-weight:600; font-size:0.9rem;">WhatsApp Suite</span>
         </div>
-        <p class="text-muted mb-sm" style="font-size:0.8rem;">Select the column that contains guest phone numbers (used for WhatsApp sending).</p>
-        <select class="form-select" id="phone-column-dropdown" style="max-width:250px; border-color:rgba(37,211,102,0.3); background:var(--bg-card);">
-          <option value="">-- Choose Column --</option>
-        </select>
+        
+        <div class="flex gap-md flex-wrap">
+          <div style="flex: 1; min-width: 250px;">
+            <p class="text-muted mb-xs" style="font-size:0.8rem;"><strong>1. Select Phone Column</strong></p>
+            <select class="form-select" id="phone-column-dropdown" style="border-color:rgba(37,211,102,0.3); background:var(--bg-card); font-size: 0.85rem;">
+              <option value="">-- Choose Column --</option>
+            </select>
+          </div>
+          
+          <div style="flex: 2; min-width: 300px;">
+            <p class="text-muted mb-xs" style="font-size:0.8rem;"><strong>2. Customize WhatsApp Message</strong></p>
+            <textarea class="form-input" id="whatsapp-message-template" rows="2" style="font-size: 0.85rem; border-color:rgba(37,211,102,0.3); background:var(--bg-card); resize: vertical;" placeholder="e.g. Hello {{Name}}, check out your invite!"></textarea>
+            <div id="variable-shortcuts" class="flex gap-xs flex-wrap mt-xs"></div>
+          </div>
+        </div>
       </div>
       <div class="mt-md">
         <button class="btn btn-sm btn-outline" id="add-column-btn" style="font-size: 0.7rem; border-style: dashed; padding: 4px 10px; border-color: var(--accent-primary-light); color: var(--accent-primary-light);">
@@ -88,7 +99,7 @@ export function renderStep3() {
       <button class="btn btn-success" id="download-csv-btn"><i class="fa-solid fa-download"></i> Download CSV</button>
       <div class="flex items-center gap-sm px-md py-xs" style="background:var(--bg-input); border-radius:var(--radius-md); border:1px solid var(--border-color);">
         <label class="flex items-center gap-xs cursor-pointer" style="font-size:0.85rem; user-select:none;">
-          <input type="checkbox" id="hindi-mode-toggle" style="width:16px; height:16px; accent-color:var(--accent-primary);">
+          <input type="checkbox" id="hindi-mode-toggle" style="width:16px; height:16px; accent-color:var(--accent-primary);" ${state.csvData.hindiMode ? "checked" : ""}>
           <span>Hindi Input Mode</span>
         </label>
         <span class="hint-btn" title="When ON, your typing (English) into cells will automatically convert to Hindi Devnagri script when you hit Space."><i class="fa-solid fa-circle-question" style="opacity:0.5; font-size:0.9rem;"></i></span>
@@ -203,6 +214,15 @@ export function initStep3() {
       }
     });
 
+  const msgTemplateInput = document.getElementById("whatsapp-message-template");
+  if (msgTemplateInput) {
+    msgTemplateInput.value = state.csvData.whatsappMessageTemplate || "";
+    msgTemplateInput.addEventListener("input", (e) => {
+      state.csvData.whatsappMessageTemplate = e.target.value;
+      notify();
+    });
+  }
+
   document
     .getElementById("add-column-btn")
     ?.addEventListener("click", async () => {
@@ -249,6 +269,13 @@ export function initStep3() {
     .getElementById("send-all-wa-btn")
     ?.addEventListener("click", sendAllToWhatsApp);
   document.getElementById("clear-csv-btn")?.addEventListener("click", clearCSV);
+
+  // Hindi Mode toggle listener
+  const hindiToggle = document.getElementById("hindi-mode-toggle");
+  hindiToggle?.addEventListener("change", (e) => {
+    state.csvData.hindiMode = e.target.checked;
+    notify();
+  });
 
   // Re-render if data already exists (session restore)
   if (state.csvData.rows.length > 0) {
@@ -314,6 +341,43 @@ function showResults() {
       </span>`,
     )
     .join("");
+
+  // Update shortcuts
+  const shortcuts = document.getElementById("variable-shortcuts");
+  if (shortcuts) {
+    shortcuts.innerHTML = headers
+      .map(
+        (h) => `
+      <button class="btn btn-sm btn-outline" style="font-size:0.65rem; padding: 2px 6px; border-color:rgba(108, 99, 255, 0.2); color:var(--text-muted);" onclick="document.dispatchEvent(new CustomEvent('insert-message-variable', {detail: '{{${h}}}'}))">
+        + {{${h}}}
+      </button>`,
+      )
+      .join("");
+  }
+
+  // Handle template shortcuts
+  document.addEventListener(
+    "insert-message-variable",
+    (e) => {
+      const input = document.getElementById("whatsapp-message-template");
+      if (input) {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const text = input.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+        input.value = before + e.detail + after;
+        state.csvData.whatsappMessageTemplate = input.value;
+        input.focus();
+        input.setSelectionRange(
+          start + e.detail.length,
+          start + e.detail.length,
+        );
+        notify();
+      }
+    },
+    { once: true },
+  );
 
   // Update phone dropdown
   const dropdown = document.getElementById("phone-column-dropdown");
@@ -470,7 +534,7 @@ export function renderTable() {
   // Add cell edit listeners
   document.querySelectorAll(".csv-cell").forEach((cell) => {
     cell.addEventListener("keydown", async (e) => {
-      const isHindiOn = document.getElementById("hindi-mode-toggle")?.checked;
+      const isHindiOn = state.csvData.hindiMode;
       if (!isHindiOn) return;
 
       if (e.key === " " || e.key === "Enter") {

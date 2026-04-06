@@ -25,7 +25,9 @@ export const state = {
     rows: [], // array of objects keyed by column header
     headers: [], // column header strings
     phoneHeader: null, // explicit phone number column name
+    whatsappMessageTemplate: "Hello {{Name}}, here is your invitation!", // Customizable message
     blankCount: 0,
+    hindiMode: false,
   },
 };
 

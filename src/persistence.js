@@ -25,6 +25,9 @@ export function saveState(state) {
         rows: state.csvData.rows,
         headers: state.csvData.headers,
         blankCount: state.csvData.blankCount,
+        phoneHeader: state.csvData.phoneHeader,
+        whatsappMessageTemplate: state.csvData.whatsappMessageTemplate,
+        hindiMode: state.csvData.hindiMode,
       },
       // Store images as {id, url, name, width, height} — no File object
       images: state.images.slice(0, MAX_IMAGES_STORED).map((img) => ({

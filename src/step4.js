@@ -123,12 +123,8 @@ export function renderStep4() {
             <option value="">-- Do not generate WhatsApp links --</option>
             ${csvHeaders
               .map((h) => {
-                const lower = h.toLowerCase();
-                const isSelect =
-                  lower.includes("phone") ||
-                  lower.includes("whatsapp") ||
-                  lower.includes("mobile");
-                return `<option value="${h}" ${isSelect ? "selected" : ""}>${h}</option>`;
+                const isSelected = h === state.csvData.phoneHeader;
+                return `<option value="${h}" ${isSelected ? "selected" : ""}>${h}</option>`;
               })
               .join("")}
           </select>
@@ -165,6 +161,15 @@ export function initStep4() {
   if (btn) {
     btn.addEventListener("click", generateAllPDFs);
   }
+
+  // Persist WhatsApp column selection
+  const waColSelect = document.getElementById("whatsapp-col-select");
+  waColSelect?.addEventListener("change", (e) => {
+    import("./state.js").then(({ state, notify }) => {
+      state.csvData.phoneHeader = e.target.value || null;
+      notify();
+    });
+  });
 }
 
 async function generateAllPDFs() {
@@ -250,6 +255,7 @@ async function generateAllPDFs() {
           label: firstVal || `Row ${i + 1}`,
           filename: outName,
           phone: phoneVal,
+          row: row, // Keep full row for variable replacement
         });
       }
     } catch (err) {
@@ -287,7 +293,16 @@ async function generateAllPDFs() {
               <span style="font-size:0.8rem; color:var(--warning);"><i class="fa-solid fa-triangle-exclamation"></i> No Number provided</span>
             </div>`;
             }
-            const msg = `Hello ${link.label}, here is your invitation!`;
+
+            // Robust placeholder replacement using single-pass regex
+            const template =
+              state.csvData.whatsappMessageTemplate ||
+              "Hello {{Name}}, here is your invitation!";
+            const msg = template.replace(/{{(.*?)}}/g, (match, key) => {
+              const val = link.row[key.trim()];
+              return val !== undefined ? val : match;
+            });
+
             const url = `https://web.whatsapp.com/send/?phone=${link.phone}&text=${encodeURIComponent(msg)}`;
             return `<div style="padding:10px 15px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
               <div>
@@ -538,6 +553,15 @@ export async function sendViaWhatsAppAutomation(rowIndex, phone) {
   showToast(`Sending to WhatsApp (+${phone})...`, "info");
 
   try {
+    // Render custom caption using robust placeholder replacement
+    const template =
+      state.csvData.whatsappMessageTemplate ||
+      "Hello {{Name}}, here is your invitation!";
+    const caption = template.replace(/{{(.*?)}}/g, (match, key) => {
+      const val = row[key.trim()];
+      return val !== undefined ? val : match;
+    });
+
     const response = await fetch("/api/send-pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -547,6 +571,7 @@ export async function sendViaWhatsAppAutomation(rowIndex, phone) {
         pdfBase64: base64,
         filename: `${guestName.replace(/\s+/g, "_")}_invitation.pdf`,
         name: guestName,
+        caption: caption,
       }),
     });
 
