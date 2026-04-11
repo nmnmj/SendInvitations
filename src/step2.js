@@ -1163,11 +1163,23 @@ export async function sendAllToWhatsApp() {
       successCount++;
 
       state.csvData.rows[i].__sent__ = true;
+      const cb = document.querySelector(
+        `.row-sent-checkbox[data-index="${i}"]`,
+      );
+      if (cb) cb.checked = true;
+      const tr = cb?.closest("tr");
+      if (tr) tr.classList.add("row-sent");
       notify();
     } catch (err) {
       console.error(`Batch send failed for row ${i + 1}:`, err);
       failCount++;
       state.csvData.rows[i].__sent__ = false;
+      const cb = document.querySelector(
+        `.row-sent-checkbox[data-index="${i}"]`,
+      );
+      if (cb) cb.checked = false;
+      const tr = cb?.closest("tr");
+      if (tr) tr.classList.remove("row-sent");
       notify();
     }
 
@@ -1278,6 +1290,11 @@ export function renderTable() {
     });
 
     cell.addEventListener("input", async (e) => {
+      const idx = cell.dataset.index;
+      const header = cell.dataset.header;
+      state.csvData.rows[idx][header] = cell.innerText.trim();
+      notify();
+
       if (!state.csvData.hindiMode) return;
       const isSpace = e.data === " ";
       const isEnter =
@@ -1343,7 +1360,26 @@ export function renderTable() {
     btn.addEventListener("click", async (e) => {
       const tempBtn = e.currentTarget;
       const idx = parseInt(tempBtn.dataset.index);
-      const phone = tempBtn.dataset.phone;
+
+      const row = state.csvData.rows[idx];
+      let phone = "";
+      if (row) {
+        if (state.csvData.phoneHeader) {
+          phone = (row[state.csvData.phoneHeader] || "").toString().trim();
+        } else {
+          for (const h of state.csvData.headers) {
+            const val = (row[h] || "").toString().trim();
+            if (val.replace(/[^0-9]/g, "").length >= 10) {
+              phone = val;
+              break;
+            }
+          }
+        }
+        phone = phone.replace(/[^0-9+]/g, "");
+        if (phone.length === 10 && !phone.startsWith("+")) {
+          phone = "91" + phone;
+        }
+      }
 
       if (!phone || phone.length < 10) {
         showToast("No valid phone number for this row", "error");

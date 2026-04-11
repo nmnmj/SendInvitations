@@ -348,6 +348,13 @@ function renderTable() {
       }
     });
 
+    cell.addEventListener("input", (e) => {
+      const idx = cell.dataset.index;
+      const header = cell.dataset.header;
+      state.csvData.rows[idx][header] = cell.innerText.trim();
+      notify();
+    });
+
     cell.addEventListener("blur", (e) => {
       const idx = e.target.dataset.index;
       const header = e.target.dataset.header;

@@ -33,8 +33,7 @@ dist-ssr
 *.sw?
 
 # Data & Generated Files
-guest.csv
-sample_guests.csv
+*.csv
 invitations/
 invitations.zip
 *.pdf
