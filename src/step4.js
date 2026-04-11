@@ -539,6 +539,10 @@ async function blobToBase64(blob) {
   });
 }
 
+const VIDEO_MIME_OK = /^video\/(mp4|quicktime|webm|3gpp|3gp)$/i;
+/** Video file size cap; server JSON limit must fit base64 (~4/3) plus PDF. */
+const MAX_VIDEO_BYTES = 110 * 1024 * 1024;
+
 export async function sendViaWhatsAppAutomation(rowIndex, phone) {
   const row = state.csvData.rows[rowIndex];
   if (!row) return;
@@ -575,8 +579,6 @@ export async function sendViaWhatsAppAutomation(rowIndex, phone) {
   const blob = new Blob([pdfBytes], { type: "application/pdf" });
   const base64 = await blobToBase64(blob);
 
-  showToast(`Sending to WhatsApp (+${phone})...`, "info");
-
   try {
     // Render custom caption using robust placeholder replacement
     const template =
@@ -586,6 +588,32 @@ export async function sendViaWhatsAppAutomation(rowIndex, phone) {
       const val = row[key.trim()];
       return val !== undefined ? val : match;
     });
+
+    const vf = state.whatsappVideoFile;
+    let videoFields = {};
+    if (vf) {
+      if (vf.size > MAX_VIDEO_BYTES) {
+        showToast(
+          `Video is too large for auto-send (max ~${Math.round(MAX_VIDEO_BYTES / (1024 * 1024))} MB with the PDF). Compress or shorten the clip.`,
+          "error",
+        );
+        throw new Error("Video too large for send");
+      }
+      const mime = (vf.type || "video/mp4").split(";")[0].trim();
+      if (!VIDEO_MIME_OK.test(mime)) {
+        showToast("Use MP4, MOV, WebM, or 3GP for the video attachment.", "error");
+        throw new Error("Unsupported video type");
+      }
+      showToast("Encoding video for WhatsApp…", "info");
+      const videoBase64 = await blobToBase64(vf);
+      videoFields = {
+        videoBase64,
+        videoMimeType: mime,
+        videoFilename: vf.name || "video.mp4",
+      };
+    }
+
+    showToast(`Sending to WhatsApp (+${phone})...`, "info");
 
     const response = await fetch("/api/send-pdf", {
       method: "POST",
@@ -597,13 +625,19 @@ export async function sendViaWhatsAppAutomation(rowIndex, phone) {
         filename: `${guestName.replace(/\s+/g, "_")}_invitation.pdf`,
         name: guestName,
         caption: caption,
+        ...videoFields,
       }),
     });
 
     const data = await response.json();
 
     if (data.success) {
-      showToast(`✅ Successfully delivered to ${guestName}!`, "success");
+      showToast(
+        vf
+          ? `✅ PDF and video sent to ${guestName}!`
+          : `✅ Successfully delivered to ${guestName}!`,
+        "success",
+      );
     } else {
       throw new Error(data.error || "Bridge Error");
     }

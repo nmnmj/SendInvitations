@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: "250mb" }));
 
 // 0. Serve built frontend files (Production)
 const distPath = path.join(__dirname, "dist");
@@ -211,9 +211,18 @@ app.get("/api/whatsapp/status", async (req, res) => {
   res.json(data || { status: "not_started" });
 });
 
-// 4. Send PDF using Baileys
+// 4. Send PDF then optional video using Baileys
 app.post("/api/send-pdf", async (req, res) => {
-  const { sessionId, phone, pdfBase64, filename, name, caption } = req.body;
+  const {
+    sessionId,
+    phone,
+    pdfBase64,
+    filename,
+    name,
+    caption,
+    videoBase64,
+    videoMimeType,
+  } = req.body;
 
   if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });
 
@@ -234,16 +243,28 @@ app.post("/api/send-pdf", async (req, res) => {
 
     console.log(`🚀 [${sessionId}] sending PDF to ${chatId}...`);
 
-    // Remove base64 header if present
     const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
     const buffer = Buffer.from(cleanBase64, "base64");
+
+    const pdfCaption =
+      caption || `Hello ${name || "Guest"}, here is your invitation!`;
 
     await sock.sendMessage(chatId, {
       document: buffer,
       fileName: filename || "Invitation.pdf",
       mimetype: "application/pdf",
-      caption: caption || `Hello ${name || "Guest"}, here is your invitation!`,
+      caption: pdfCaption,
     });
+
+    if (videoBase64 && videoMimeType) {
+      const cleanVid = String(videoBase64).replace(/^data:[^;]+;base64,/, "");
+      const vidBuf = Buffer.from(cleanVid, "base64");
+      console.log(`🎬 [${sessionId}] sending video to ${chatId}...`);
+      await sock.sendMessage(chatId, {
+        video: vidBuf,
+        mimetype: videoMimeType,
+      });
+    }
 
     console.log(`✅ [${sessionId}] Sent successful!`);
     res.json({ success: true });

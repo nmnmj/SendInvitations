@@ -31,6 +31,8 @@ export const state = {
   },
   whatsappPairingCode: null,
   whatsappPhone: "",
+  /** Optional video sent after each PDF via automation (File — not persisted). */
+  whatsappVideoFile: null,
   guidanceEnabled:
     localStorage.getItem("invitecraft_guidance_enabled") !== "false",
 };

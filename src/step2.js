@@ -198,6 +198,16 @@ export function renderStep2() {
                </div>
              </div>
            </div>
+
+           <div class="mt-md pt-md" style="border-top:1px solid rgba(37,211,102,0.2);">
+             <p class="text-muted mb-xs" style="font-size:0.8rem;"><strong>3. Optional video</strong> — same clip for every guest; sent by the WhatsApp bridge <strong>right after</strong> each PDF. Use MP4/MOV/WebM/3GP; very large files may fail (keep under ~110 MB).</p>
+             <div class="flex items-center gap-sm flex-wrap">
+               <input type="file" id="wa-video-input" accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/3gp" style="display:none;" />
+               <button type="button" class="btn btn-sm btn-outline" id="wa-video-browse" role="button" tabindex="-1"><i class="fa-solid fa-film"></i> Choose video…</button>
+               <span id="wa-video-label" class="text-muted" style="font-size:0.8rem; flex:1; min-width:120px;">None selected</span>
+               <button type="button" class="btn btn-sm btn-outline" id="wa-video-clear" role="button" tabindex="-1" style="display:none;"><i class="fa-solid fa-xmark"></i> Remove</button>
+             </div>
+           </div>
            
            <div class="flex items-center gap-sm mt-md pt-md" style="border-top:1px solid rgba(37,211,102,0.2);">
              <div class="btn btn-accent" id="send-all-wa-btn" style="background:#25D366; color:white;" role="button" tabindex="-1"><i class="fa-brands fa-whatsapp"></i> Send All to WhatsApp</div>
@@ -345,6 +355,36 @@ export function initStep2() {
   document
     .getElementById("send-all-wa-btn")
     ?.addEventListener("click", sendAllToWhatsApp);
+
+  const waVideoInput = document.getElementById("wa-video-input");
+  const waVideoBrowse = document.getElementById("wa-video-browse");
+  const waVideoClear = document.getElementById("wa-video-clear");
+  const waVideoLabel = document.getElementById("wa-video-label");
+  const syncWaVideoUi = () => {
+    const f = state.whatsappVideoFile;
+    if (waVideoLabel) {
+      waVideoLabel.textContent = f ? f.name : "None selected";
+    }
+    if (waVideoClear) {
+      waVideoClear.style.display = f ? "" : "none";
+    }
+  };
+  syncWaVideoUi();
+  waVideoBrowse?.addEventListener("click", () => waVideoInput?.click());
+  waVideoInput?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      state.whatsappVideoFile = file;
+      notify();
+      syncWaVideoUi();
+    }
+    e.target.value = "";
+  });
+  waVideoClear?.addEventListener("click", () => {
+    state.whatsappVideoFile = null;
+    notify();
+    syncWaVideoUi();
+  });
 
   // Guest List Actions
   document

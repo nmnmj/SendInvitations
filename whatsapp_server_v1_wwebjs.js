@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: "250mb" }));
 
 // 0. Serve built frontend files (Production)
 const distPath = path.join(__dirname, "dist");
@@ -140,9 +140,19 @@ app.get("/api/whatsapp/status", (req, res) => {
   res.json(data);
 });
 
-// 4. Enhanced Multi-User Send PDF
+// 4. Send PDF then optional video
 app.post("/api/send-pdf", async (req, res) => {
-  const { sessionId, phone, pdfBase64, filename, name } = req.body;
+  const {
+    sessionId,
+    phone,
+    pdfBase64,
+    filename,
+    name,
+    caption,
+    videoBase64,
+    videoMimeType,
+    videoFilename,
+  } = req.body;
 
   if (!sessionId) return res.status(400).json({ error: "Missing sessionId" });
 
@@ -163,10 +173,31 @@ app.post("/api/send-pdf", async (req, res) => {
 
     console.log(`🚀 [${sessionId}] sending to ${chatId}...`);
 
-    const media = new MessageMedia("application/pdf", pdfBase64, filename);
+    const cleanPdf = String(pdfBase64 || "").replace(
+      /^data:application\/pdf;base64,/,
+      "",
+    );
+    const media = new MessageMedia(
+      "application/pdf",
+      cleanPdf,
+      filename || "Invitation.pdf",
+    );
+    const pdfCaption =
+      caption || `Hello ${name || "Guest"}, here is your invitation!`;
     await client.sendMessage(chatId, media, {
-      caption: `Hello ${name || "Guest"}, here is your invitation!`,
+      caption: pdfCaption,
     });
+
+    if (videoBase64 && videoMimeType) {
+      const cleanVid = String(videoBase64).replace(/^data:[^;]+;base64,/, "");
+      const vidMedia = new MessageMedia(
+        videoMimeType,
+        cleanVid,
+        videoFilename || "video.mp4",
+      );
+      console.log(`🎬 [${sessionId}] sending video to ${chatId}...`);
+      await client.sendMessage(chatId, vidMedia);
+    }
 
     console.log(`✅ [${sessionId}] Sent successful!`);
     res.json({ success: true });

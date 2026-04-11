@@ -277,6 +277,7 @@ export class App {
           scaling: "fit",
         };
         state.csvData = { rows: [], headers: [], blankCount: 0 };
+        state.whatsappVideoFile = null;
         this.render();
         showToast("Session cleared — starting fresh", "info");
       });
